@@ -1,0 +1,41 @@
+import { SlackNode } from './nodes/SlackNode';
+import { GithubNode } from './nodes/GithubNode';
+import { NotionNode } from './nodes/NotionNode';
+import { StripeNode } from './nodes/StripeNode';
+import { WeatherNode } from './nodes/WeatherNode';
+import { DatabaseNode } from './nodes/DatabaseNode';
+import { MathNode } from './nodes/MathNode';
+import { FilterNode } from './nodes/FilterNode';
+import { DelayNode } from './nodes/DelayNode';
+import { TimerNode } from './nodes/TimerNode';
+import { EmailNode } from './nodes/EmailNode';
+import { SMSNode } from './nodes/SMSNode';
+import { WebhookNode } from './nodes/WebhookNode';
+import { TranslateNode } from './nodes/TranslateNode';
+import { MapNode } from './nodes/MapNode';
+import { DiscordNode } from './nodes/DiscordNode';
+import { TemplateEcommerceNode } from './nodes/TemplateEcommerceNode';
+import { TemplateDataPipelineNode } from './nodes/TemplateDataPipelineNode';
+import { TemplateOnboardingNode } from './nodes/TemplateOnboardingNode';
+import { TemplateReportNode } from './nodes/TemplateReportNode';
+
+  slack: SlackNode,
+  github: GithubNode,
+  notion: NotionNode,
+  stripe: StripeNode,
+  weather: WeatherNode,
+  database: DatabaseNode,
+  math: MathNode,
+  filter: FilterNode,
+  delay: DelayNode,
+  timer: TimerNode,
+  email: EmailNode,
+  sms: SMSNode,
+  webhook: WebhookNode,
+  translate: TranslateNode,
+  map: MapNode,
+  discord: DiscordNode,
+  template_ecommerce: TemplateEcommerceNode,
+  template_data_pipeline: TemplateDataPipelineNode,
+  template_onboarding: TemplateOnboardingNode,
+  template_report: TemplateReportNode,

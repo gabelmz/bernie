@@ -1,0 +1,120 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --theme-bg-primary: #09090b; /* Zinc 950 */
+  --theme-bg-secondary: #18181b; /* Zinc 900 */
+  --theme-surface: #27272a; /* Zinc 800 */
+  
+  --theme-text: #fafafa; /* Zinc 50 */
+  --theme-text-muted: color-mix(in srgb, var(--theme-text) 60%, transparent);
+  
+  --theme-highlight: #6366f1; /* Indigo 500 */
+  --theme-highlight-hover: #4f46e5; /* Indigo 600 */
+  
+  --theme-border: #27272a; /* Zinc 800 */
+  --theme-border-subtle: color-mix(in srgb, var(--theme-border) 50%, transparent); 
+  
+  --theme-radius: 12px;
+  --theme-radius-inner: 8px;
+  
+  --theme-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.8);
+}
+
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Familjen Grotesk', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  
+  --color-canvas: var(--theme-bg-primary);
+  --color-card: var(--theme-bg-secondary);
+  --color-surface: var(--theme-surface);
+  
+  --color-border: var(--theme-border);
+  --color-border-subtle: var(--theme-border-subtle);
+  
+  --color-accent: var(--theme-highlight);
+  --color-accent-hover: var(--theme-highlight-hover);
+  
+  --color-text-main: var(--theme-text);
+  --color-text-muted: var(--theme-text-muted);
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-main);
+}
+
+/* Custom XYFlow Styles for Sleek Dark Theme */
+.react-flow__node {
+  border-radius: var(--theme-radius);
+  box-shadow: var(--theme-shadow);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.react-flow__node.selected {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 1px var(--color-accent), 0 0 16px 2px color-mix(in srgb, var(--color-accent) 40%, transparent) !important;
+}
+
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 2px solid var(--color-border-subtle);
+  transition: all 0.2s ease;
+}
+
+.react-flow__handle:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: scale(1.25);
+}
+
+.react-flow__attribution {
+  background: transparent !important;
+  color: var(--color-text-muted) !important;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+  stroke: var(--color-border);
+}
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 1s linear infinite;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+}
+
+.react-flow__controls button {
+  background: var(--color-card) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  fill: var(--color-text-muted) !important;
+}
+.react-flow__controls button:hover {
+  background: var(--color-surface) !important;
+  fill: var(--color-text-main) !important;
+}
+
+
+.react-flow__handle::after {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  right: -15px;
+  bottom: -15px;
+  background: transparent;
+}
+
+body:not(.show-vertical-handles) .react-flow__handle-top,
+body:not(.show-vertical-handles) .react-flow__handle-bottom {
+  display: none !important;
+}

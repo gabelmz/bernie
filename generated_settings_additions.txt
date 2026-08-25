@@ -1,0 +1,120 @@
+    case 'slack':
+      return (
+        <div className="flex flex-col">
+          {renderField('Slack Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'github':
+      return (
+        <div className="flex flex-col">
+          {renderField('GitHub Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'notion':
+      return (
+        <div className="flex flex-col">
+          {renderField('Notion Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'stripe':
+      return (
+        <div className="flex flex-col">
+          {renderField('Stripe Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'weather':
+      return (
+        <div className="flex flex-col">
+          {renderField('Weather Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'database':
+      return (
+        <div className="flex flex-col">
+          {renderField('Database Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'math':
+      return (
+        <div className="flex flex-col">
+          {renderField('Math Ops Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'filter':
+      return (
+        <div className="flex flex-col">
+          {renderField('Filter Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'delay':
+      return (
+        <div className="flex flex-col">
+          {renderField('Delay Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'timer':
+      return (
+        <div className="flex flex-col">
+          {renderField('Timer Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'email':
+      return (
+        <div className="flex flex-col">
+          {renderField('Send Email Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'sms':
+      return (
+        <div className="flex flex-col">
+          {renderField('Send SMS Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'webhook':
+      return (
+        <div className="flex flex-col">
+          {renderField('Webhook Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'translate':
+      return (
+        <div className="flex flex-col">
+          {renderField('Translate Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'map':
+      return (
+        <div className="flex flex-col">
+          {renderField('Map Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'discord':
+      return (
+        <div className="flex flex-col">
+          {renderField('Discord Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'template_ecommerce':
+      return (
+        <div className="flex flex-col">
+          {renderField('E-commerce Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'template_data_pipeline':
+      return (
+        <div className="flex flex-col">
+          {renderField('Data Pipeline Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'template_onboarding':
+      return (
+        <div className="flex flex-col">
+          {renderField('Onboarding Configuration', 'config', 'json', '{}')}
+        </div>
+      );
+    case 'template_report':
+      return (
+        <div className="flex flex-col">
+          {renderField('Daily Report Configuration', 'config', 'json', '{}')}
+        </div>
+      );

@@ -1,0 +1,6 @@
+{
+  "name": "Bernie",
+  "description": "Infinite canvas app with JSON nodes, Google Drive integration, HTTP plugins, and AI automation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
