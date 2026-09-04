@@ -5,14 +5,17 @@
 
 import { Canvas } from './components/Canvas';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ReactFlowProvider } from '@xyflow/react';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ReactFlowProvider>
-        <Canvas />
-      </ReactFlowProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ReactFlowProvider>
+          <Canvas />
+        </ReactFlowProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

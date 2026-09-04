@@ -57,7 +57,9 @@ export function NavigationBar({ onAddNode }: { onAddNode?: (type: string, data?:
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-canvas/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[80vh]">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
-              <h2 className="text-lg font-bold text-text-main tracking-wide capitalize">{activePage}</h2>
+              <h2 className="text-lg font-bold text-text-main tracking-wide">
+                {pages.find(p => p.id === activePage)?.label || activePage}
+              </h2>
               <button 
                 onClick={() => setActivePage(null)}
                 className="p-2 hover:bg-surface rounded-full transition-colors text-text-muted hover:text-text-main"

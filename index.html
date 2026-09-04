@@ -3,10 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>Bernie</title>
+    <meta name="description" content="Infinite canvas app with JSON nodes, Google Drive integration, HTTP plugins, and AI automation." />
+    <meta property="og:title" content="Bernie" />
+    <meta property="og:description" content="Infinite canvas app with JSON nodes, Google Drive integration, HTTP plugins, and AI automation." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Gracefully handle cross-origin script errors in sandboxed iframes
+      window.addEventListener('error', function(event) {
+        if (event.message === 'Script error.' || (!event.filename && !event.lineno)) {
+          console.warn('Interception of cross-origin script error:', event);
+          event.preventDefault();
+          return true;
+        }
+      }, true);
+      window.onerror = function(message, source) {
+        if (message === 'Script error.' || !source) {
+          return true;
+        }
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason && (event.reason.message === 'Script error.' || String(event.reason).includes('Script error'))) {
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

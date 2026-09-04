@@ -7,6 +7,7 @@ import { toPng } from 'html-to-image';
 export function CommandPalette({ takeSnapshot }: { takeSnapshot?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { setNodes, setEdges, getViewport, screenToFlowPosition, getNodes, getEdges, setViewport } = useReactFlow();
 
@@ -31,6 +32,12 @@ export function CommandPalette({ takeSnapshot }: { takeSnapshot?: () => void }) 
       setSearch('');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (localStorage.getItem('bernie-show-handles') === 'true') {
+      document.body.classList.add('show-vertical-handles');
+    }
+  }, []);
 
   if (!isOpen) return null;
 
@@ -83,15 +90,16 @@ export function CommandPalette({ takeSnapshot }: { takeSnapshot?: () => void }) 
             if (flow.nodes) setNodes(flow.nodes);
             if (flow.edges) setEdges(flow.edges);
             if (flow.viewport) setViewport(flow.viewport);
+            setIsOpen(false);
           } catch (err) {
-            alert('Failed to parse JSON file');
+            console.error('Failed to parse JSON file', err);
+            setStatusMessage('Failed to parse JSON file');
           }
         };
         reader.readAsText(file);
       }
     };
     input.click();
-    setIsOpen(false);
   };
 
   const copyJson = () => {
@@ -108,10 +116,11 @@ export function CommandPalette({ takeSnapshot }: { takeSnapshot?: () => void }) 
       if (flow.nodes) setNodes(flow.nodes);
       if (flow.edges) setEdges(flow.edges);
       if (flow.viewport) setViewport(flow.viewport);
+      setIsOpen(false);
     } catch (err) {
-      alert('Clipboard does not contain a valid Canvas JSON object.');
+      console.error('Clipboard JSON parse error', err);
+      setStatusMessage('Clipboard does not contain a valid Canvas JSON object');
     }
-    setIsOpen(false);
   };
 
   const downloadImage = () => {
@@ -133,12 +142,6 @@ export function CommandPalette({ takeSnapshot }: { takeSnapshot?: () => void }) 
     localStorage.setItem('bernie-show-handles', isShowing ? 'true' : 'false');
     setIsOpen(false);
   };
-
-  useEffect(() => {
-    if (localStorage.getItem('bernie-show-handles') === 'true') {
-      document.body.classList.add('show-vertical-handles');
-    }
-  }, []);
 
   const commands = [
     { name: 'Add Trigger Node', action: () => addNode('trigger', 'Trigger'), icon: <Plus className="w-4 h-4" /> },
@@ -199,6 +202,12 @@ export function CommandPalette({ takeSnapshot }: { takeSnapshot?: () => void }) 
             <X className="w-5 h-5" />
           </button>
         </div>
+        {statusMessage && (
+          <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs flex items-center justify-between">
+            <span>{statusMessage}</span>
+            <button onClick={() => setStatusMessage(null)} className="text-red-400 hover:text-white font-bold ml-2">×</button>
+          </div>
+        )}
         <div className="max-h-[60vh] overflow-y-auto p-2 flex flex-col gap-1">
           {filtered.length > 0 ? filtered.map((cmd, idx) => (
             <button

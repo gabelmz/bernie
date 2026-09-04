@@ -129,7 +129,9 @@ export function IntegrationsPage({ onClose }: IntegrationsPageProps) {
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-text-main flex items-center gap-2">
                   {integration.name}
-                  <Shield className="w-3 h-3 text-text-muted" title="Requires Configuration" />
+                  <span title="Requires Configuration">
+                    <Shield className="w-3 h-3 text-text-muted" />
+                  </span>
                 </h4>
                 <p className="text-[10px] text-text-muted mt-0.5">{integration.description}</p>
               </div>

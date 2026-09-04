@@ -18,9 +18,10 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
     },
+    "types": ["@testing-library/jest-dom"],
     "allowImportingTsExtensions": true,
     "noEmit": true
   }

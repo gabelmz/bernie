@@ -55,7 +55,7 @@ import { NavigationBar } from './NavigationBar';
 import { CommandPalette } from './CommandPalette';
 import dagre from 'dagre';
 
-import { Hexagon, Grid, SlidersHorizontal, Settings2, X, Copy, Trash2, Eye, Play, List, Map, Wand2, Hand, MousePointer2, Group, Magnet, Globe, Sparkles } from 'lucide-react';
+import { Hexagon, Grid, SlidersHorizontal, Settings2, X, Copy, Trash2, Eye, Play, List, Map, Wand2, Hand, MousePointer2, Group, Magnet, Globe, Sparkles, Check } from 'lucide-react';
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -201,7 +201,15 @@ export function Canvas() {
   // Context Menu State
   const [menu, setMenu] = useState<{ id: string; top: number; left: number; type: 'node' | 'edge' | 'pane' } | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const { takeSnapshot } = useUndoRedo(setNodes, setEdges);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => {
+      setToast((prev) => (prev === msg ? null : prev));
+    }, 2800);
+  }, []);
 
   const onConnect = useCallback(
     (params: Connection | Edge) => { takeSnapshot(); setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true }, eds)); },
@@ -373,22 +381,20 @@ export function Canvas() {
     if (!menu) return;
     const nodeToSave = nodes.find((n) => n.id === menu.id);
     if (nodeToSave) {
-      const customName = prompt('Enter a name for this custom node template:', (nodeToSave.data.title as string) || 'Custom Node');
-      if (customName) {
-        const saved = localStorage.getItem('bernie-custom-nodes');
-        let customNodes = saved ? JSON.parse(saved) : [];
-        customNodes.push({
-          id: Date.now().toString(),
-          name: customName,
-          type: nodeToSave.type,
-          data: { ...nodeToSave.data, title: customName }
-        });
-        localStorage.setItem('bernie-custom-nodes', JSON.stringify(customNodes));
-        alert('Custom node saved! You can find it in the Node Gallery.');
-      }
+      const customName = (nodeToSave.data.title as string) || `${nodeToSave.type.toUpperCase()} Template`;
+      const saved = localStorage.getItem('bernie-custom-nodes');
+      let customNodes = saved ? JSON.parse(saved) : [];
+      customNodes.push({
+        id: Date.now().toString(),
+        name: customName,
+        type: nodeToSave.type,
+        data: { ...nodeToSave.data, title: customName }
+      });
+      localStorage.setItem('bernie-custom-nodes', JSON.stringify(customNodes));
+      showToast(`Saved "${customName}" to Node Gallery!`);
     }
     closeMenu();
-  }, [menu, nodes, closeMenu]);
+  }, [menu, nodes, closeMenu, showToast]);
 
   const duplicateNode = useCallback(() => {
     if (!menu) return;
@@ -584,6 +590,14 @@ export function Canvas() {
       </div>
 
       <NavigationBar onAddNode={onAddNode} />
+
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-accent/40 text-text-main px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-3">
+          <Check className="w-4 h-4 text-accent" />
+          <span>{toast}</span>
+        </div>
+      )}
 
       <div className="flex-1 relative" ref={canvasRef}>
         <ReactFlow
@@ -828,9 +842,9 @@ export function Canvas() {
               {menu.type === 'pane' && (
                 <>
                   <div className="px-3 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-widest">Add Node</div>
-                  <button onClick={() => { setNodes(nds => [...nds, { id: nanoid(), type: 'trigger', position: { x: menu.left, y: menu.top }, data: { title: 'Trigger' } }]); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-surface flex items-center gap-2 transition-colors"><Play className="w-4 h-4 text-emerald-400" /> Trigger Node</button>
-                  <button onClick={() => { setNodes(nds => [...nds, { id: nanoid(), type: 'http', position: { x: menu.left, y: menu.top }, data: { title: 'HTTP Request' } }]); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-surface flex items-center gap-2 transition-colors"><Globe className="w-4 h-4 text-blue-400" /> HTTP Request</button>
-                  <button onClick={() => { setNodes(nds => [...nds, { id: nanoid(), type: 'ai', position: { x: menu.left, y: menu.top }, data: { title: 'AI Agent' } }]); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-surface flex items-center gap-2 transition-colors"><Sparkles className="w-4 h-4 text-purple-400" /> AI Agent</button>
+                  <button onClick={() => { onAddNode('trigger', { title: 'Trigger' }, { x: menu.left, y: menu.top }); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-surface flex items-center gap-2 transition-colors"><Play className="w-4 h-4 text-emerald-400" /> Trigger Node</button>
+                  <button onClick={() => { onAddNode('http', { title: 'HTTP Request' }, { x: menu.left, y: menu.top }); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-surface flex items-center gap-2 transition-colors"><Globe className="w-4 h-4 text-blue-400" /> HTTP Request</button>
+                  <button onClick={() => { onAddNode('ai', { title: 'AI Agent' }, { x: menu.left, y: menu.top }); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-surface flex items-center gap-2 transition-colors"><Sparkles className="w-4 h-4 text-purple-400" /> AI Agent</button>
                 </>
               )}
               {menu.type === 'node' && (

@@ -7,9 +7,89 @@ import { NodeWrapper, NodeHeader } from './NodeWrapper';
 
 declare global {
   interface Window {
-    gapi: any;
-    google: any;
+    gapi?: any;
+    google?: any;
   }
+}
+
+let pickerPromise: Promise<boolean> | null = null;
+
+function loadGooglePicker(): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+
+  if (window.google?.picker) {
+    return Promise.resolve(true);
+  }
+
+  if (pickerPromise) {
+    return pickerPromise;
+  }
+
+  pickerPromise = new Promise<boolean>((resolve) => {
+    const onGapiReady = () => {
+      if (!window.gapi || typeof window.gapi.load !== 'function') {
+        resolve(false);
+        return;
+      }
+      try {
+        window.gapi.load('picker', {
+          callback: () => {
+            resolve(Boolean(window.google?.picker));
+          },
+          onerror: () => {
+            resolve(false);
+          },
+          ontimeout: () => {
+            resolve(false);
+          }
+        });
+      } catch (err) {
+        console.warn('Could not initialize Google Picker via gapi.load:', err);
+        resolve(false);
+      }
+    };
+
+    if (window.gapi?.load) {
+      onGapiReady();
+      return;
+    }
+
+    const scriptSrc = 'https://apis.google.com/js/api.js';
+    let script = document.querySelector<HTMLScriptElement>(`script[src="${scriptSrc}"]`);
+
+    if (!script) {
+      script = document.createElement('script');
+      script.src = scriptSrc;
+      script.crossOrigin = 'anonymous';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    const handleScriptLoad = () => {
+      onGapiReady();
+    };
+
+    script.addEventListener('load', handleScriptLoad);
+    script.addEventListener('error', (e) => {
+      e?.preventDefault?.();
+      resolve(false);
+    });
+
+    let checks = 0;
+    const interval = setInterval(() => {
+      checks++;
+      if (window.gapi?.load) {
+        clearInterval(interval);
+        onGapiReady();
+      } else if (checks > 20) {
+        clearInterval(interval);
+        resolve(false);
+      }
+    }, 200);
+  });
+
+  return pickerPromise;
 }
 
 export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
@@ -18,53 +98,45 @@ export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
   const [selectedFileName, setSelectedFileName] = useState(data.fileName || '');
   const [selectedFileId, setSelectedFileId] = useState(data.fileId || '');
 
-  useEffect(() => {
-    // Load Picker API
-    const loadScript = (src: string, onLoad: () => void) => {
-      if (document.querySelector(`script[src="${src}"]`)) {
-        onLoad();
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = onLoad;
-      document.body.appendChild(script);
-    };
-
-    loadScript('https://apis.google.com/js/api.js', () => {
-      window.gapi.load('picker', { callback: () => {} });
-    });
-  }, []);
-
   const openPicker = async () => {
+    setError(null);
     const token = await getAccessToken();
     if (!token) {
       setError("Please Connect Workspace in the sidebar first.");
       return;
     }
-    
-    if (!window.google || !window.google.picker) {
-      setError("Picker API not loaded yet.");
-      return;
+
+    if (!window.google?.picker) {
+      setLoading(true);
+      const isReady = await loadGooglePicker();
+      setLoading(false);
+      if (!isReady || !window.google?.picker) {
+        setError("Google Picker API is unavailable. Please verify connection and popup settings.");
+        return;
+      }
     }
 
-    const view = new window.google.picker.DocsView(window.google.picker.ViewId.DOCS);
-    
-    const picker = new window.google.picker.PickerBuilder()
-      .addView(view)
-      .setOAuthToken(token)
-      // @ts-ignore
-      .setDeveloperKey(import.meta.env.VITE_GOOGLE_API_KEY || '') // Developer key is needed for picker
-      .setCallback((data: any) => {
-        if (data.action === window.google.picker.Action.PICKED) {
-          const file = data.docs[0];
-          setSelectedFileId(file.id);
-          setSelectedFileName(file.name);
-          // Optional: update node data via internal event mechanism if needed
-        }
-      })
-      .build();
-    picker.setVisible(true);
+    try {
+      const view = new window.google.picker.DocsView(window.google.picker.ViewId.DOCS);
+
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(token)
+        // @ts-ignore
+        .setDeveloperKey(import.meta.env.VITE_GOOGLE_API_KEY || '') // Developer key is needed for picker
+        .setCallback((data: any) => {
+          if (data.action === window.google.picker.Action.PICKED) {
+            const file = data.docs[0];
+            setSelectedFileId(file.id);
+            setSelectedFileName(file.name);
+            // Optional: update node data via internal event mechanism if needed
+          }
+        })
+        .build();
+      picker.setVisible(true);
+    } catch (err: any) {
+      setError(err?.message || "Failed to launch Picker");
+    }
   };
 
   const fetchFileData = async () => {

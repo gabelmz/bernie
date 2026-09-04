@@ -113,7 +113,7 @@ export function NodeGalleryPage({ onClose, onAddNode }: NodeGalleryPageProps) {
                 </div>
                 <button 
                   onClick={() => handleAdd(node.type, { title: node.title })}
-                  className="w-full py-1.5 bg-canvas hover:bg-card text-text-main border border-border rounded-lg text-xs font-semibold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100"
+                  className="w-full py-1.5 bg-canvas hover:bg-accent hover:text-white text-text-main border border-border rounded-lg text-xs font-semibold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add to Canvas
