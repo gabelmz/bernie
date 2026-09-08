@@ -1,34 +1,16 @@
 import { useEffect, useState } from 'react';
 import { googleSignIn, initAuth, logout } from '../lib/firebase';
-import { LogOut, Database, CheckCircle2, Package, Table, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { User } from 'firebase/auth';
-import {
-  INTEGRATION_IDS,
-  IntegrationConfigMap,
-  IntegrationId,
-  loadIntegrations,
-  saveIntegrations,
-} from '../lib/integrations';
-import { INTEGRATION_SCHEMAS, validateIntegrationConfig } from '../lib/integrationCore';
-import { IntegrationConfigForm } from './IntegrationConfigForm';
+import { IntegrationsManager } from './IntegrationsManager';
 
 interface IntegrationsPageProps {
   onClose: () => void;
 }
 
-const INTEGRATION_META: Record<IntegrationId, { icon: typeof Database; color: string; bgColor: string }> = {
-  asana: { icon: CheckCircle2, color: 'text-rose-500', bgColor: 'bg-rose-500/10' },
-  keepa: { icon: Package, color: 'text-orange-400', bgColor: 'bg-orange-400/10' },
-  supabase: { icon: Database, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-  sheets: { icon: Table, color: 'text-green-500', bgColor: 'bg-green-500/10' },
-};
-
 export function IntegrationsPage({ onClose }: IntegrationsPageProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [configs, setConfigs] = useState<IntegrationConfigMap>(() => loadIntegrations());
-  const [expanded, setExpanded] = useState<IntegrationId | null>(null);
-  const [savedToast, setSavedToast] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -50,16 +32,6 @@ export function IntegrationsPage({ onClose }: IntegrationsPageProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleConfigChange = (id: IntegrationId, next: Record<string, any>) => {
-    setConfigs((prev) => ({ ...prev, [id]: next }));
-  };
-
-  const handleSave = (id: IntegrationId) => {
-    saveIntegrations(configs);
-    setSavedToast(`${INTEGRATION_SCHEMAS[id].name} settings saved.`);
-    setTimeout(() => setSavedToast(null), 2500);
   };
 
   return (
@@ -108,70 +80,8 @@ export function IntegrationsPage({ onClose }: IntegrationsPageProps) {
 
         <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest mb-4">Integration Settings</h3>
 
-        <div className="flex flex-col gap-3">
-          {INTEGRATION_IDS.map((id) => {
-            const schema = INTEGRATION_SCHEMAS[id];
-            const meta = INTEGRATION_META[id];
-            const Icon = meta.icon;
-            const isExpanded = expanded === id;
-            const { valid } = validateIntegrationConfig(id, configs[id]);
-
-            return (
-              <div key={id} className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-                <button
-                  onClick={() => setExpanded(isExpanded ? null : id)}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/5 transition-colors"
-                >
-                  <div className={`${meta.bgColor} p-2 rounded-lg shrink-0`}>
-                    <Icon className={`w-5 h-5 ${meta.color}`} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-text-main">{schema.name}</h4>
-                    <p className="text-[10px] text-text-muted mt-0.5">{schema.description}</p>
-                  </div>
-                  {valid ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-2 py-0.5 shrink-0">
-                      <Check className="w-3 h-3" /> Configured
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted bg-canvas border border-border rounded-full px-2 py-0.5 shrink-0">
-                      Not set
-                    </span>
-                  )}
-                  {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-text-muted shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
-                  )}
-                </button>
-
-                {isExpanded && (
-                  <div className="px-3 pb-4 border-t border-border">
-                    <IntegrationConfigForm
-                      id={id}
-                      config={configs[id]}
-                      onChange={handleConfigChange}
-                      onSave={() => handleSave(id)}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <p className="text-[11px] text-text-muted mt-6 leading-relaxed">
-          Credentials are stored in this browser only and sent with each node run. Nodes leave their own fields blank to
-          inherit these defaults.
-        </p>
+        <IntegrationsManager />
       </div>
-
-      {savedToast && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-text-main text-canvas px-4 py-2 rounded-lg text-xs font-bold shadow-2xl flex items-center gap-2">
-          <Check className="w-3.5 h-3.5" />
-          {savedToast}
-        </div>
-      )}
     </div>
   );
 }

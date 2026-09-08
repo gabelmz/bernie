@@ -8,9 +8,6 @@ import {
   Maximize, 
   Network, 
   User, 
-  Plug, 
-  Database, 
-  Key, 
   Check, 
   RotateCcw, 
   Sliders, 
@@ -20,6 +17,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useTheme, themePresets, defaultTheme, ThemePreset } from '../contexts/ThemeContext';
+import { IntegrationsManager } from './IntegrationsManager';
 
 interface SettingsPageProps {
   onClose: () => void;
@@ -29,8 +27,6 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
   const [activeTab, setActiveTab] = useState<'appearance' | 'connections' | 'account'>('appearance');
   const { theme, setTheme } = useTheme();
   const [saveToast, setSaveToast] = useState(false);
-  const [mcpUrl, setMcpUrl] = useState('ws://localhost:3001');
-  const [mcpStatus, setMcpStatus] = useState<string | null>(null);
   const [guestMode, setGuestMode] = useState(true);
 
   const handleSave = () => {
@@ -61,14 +57,6 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     } else {
       setTheme(prev => ({ ...prev, [key]: value }));
     }
-  };
-
-  const handleConnectMcp = () => {
-    setMcpStatus('testing');
-    setTimeout(() => {
-      setMcpStatus('connected');
-      setTimeout(() => setMcpStatus(null), 3500);
-    }, 600);
   };
 
   return (
@@ -501,71 +489,16 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
           {activeTab === 'connections' && (
             <div className="max-w-5xl mx-auto flex flex-col gap-8 pb-32">
               <div className="bg-card border border-border rounded-2xl p-6 shadow-xl">
-                <h3 className="text-base font-bold text-text-main mb-6 uppercase tracking-widest border-b border-border pb-4 flex items-center gap-3">
+                <h3 className="text-base font-bold text-text-main mb-2 uppercase tracking-widest border-b border-border pb-4 flex items-center gap-3">
                   <Network className="w-5 h-5 text-accent" />
-                  Connections & External Integrations
+                  Connections & APIs
                 </h3>
-                <div className="space-y-6">
-                  {/* MCP */}
-                  <div className="bg-surface border border-border rounded-xl p-5">
-                    <h4 className="font-semibold text-text-main mb-2 flex items-center gap-2">
-                      <Plug className="w-4 h-4 text-emerald-400" /> Model Context Protocol (MCP)
-                    </h4>
-                    <p className="text-xs text-text-muted mb-4">Connect to local MCP servers to expand your node gallery dynamically with custom tooling.</p>
-                    <div className="flex items-center gap-4">
-                      <input 
-                        type="text" 
-                        value={mcpUrl}
-                        onChange={(e) => setMcpUrl(e.target.value)}
-                        placeholder="ws://localhost:3001" 
-                        className="flex-1 bg-canvas border border-border rounded-lg p-2.5 text-xs outline-none focus:border-accent font-mono" 
-                      />
-                      <button 
-                        onClick={handleConnectMcp}
-                        disabled={mcpStatus === 'testing'}
-                        className="bg-accent text-white px-4 py-2.5 rounded-lg text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-                      >
-                        {mcpStatus === 'testing' ? 'Connecting...' : mcpStatus === 'connected' ? 'Connected ✓' : 'Connect MCP'}
-                      </button>
-                    </div>
-                    {mcpStatus === 'connected' && (
-                      <p className="text-xs text-emerald-400 mt-2 font-medium">✓ Local MCP server endpoint registered successfully.</p>
-                    )}
-                  </div>
-                  
-                  {/* Database */}
-                  <div className="bg-surface border border-border rounded-xl p-5">
-                    <h4 className="font-semibold text-text-main mb-2 flex items-center gap-2">
-                      <Database className="w-4 h-4 text-blue-400" /> Database Default Connection
-                    </h4>
-                    <p className="text-xs text-text-muted mb-4">Configure default connection strings for Database nodes across your canvas.</p>
-                    <input 
-                      type="password" 
-                      placeholder="postgresql://user:password@localhost:5432/mydb" 
-                      className="w-full bg-canvas border border-border rounded-lg p-2.5 text-xs outline-none focus:border-accent font-mono" 
-                    />
-                  </div>
+                <p className="text-xs text-text-muted mb-6 leading-relaxed">
+                  Credentials and defaults for every service Bernie talks to. Each entry is saved in this browser and
+                  reused by the matching nodes, which inherit these values whenever their own fields are left blank.
+                </p>
 
-                  {/* AI Provider Keys */}
-                  <div className="bg-surface border border-border rounded-xl p-5">
-                    <h4 className="font-semibold text-text-main mb-2 flex items-center gap-2">
-                      <Key className="w-4 h-4 text-yellow-400" /> AI Provider API Keys
-                    </h4>
-                    <p className="text-xs text-text-muted mb-4">Provide keys for standard AI nodes (OpenAI, Anthropic, Gemini, etc). Server-side proxy protects all secrets.</p>
-                    <div className="space-y-3">
-                       <input 
-                         type="password" 
-                         placeholder="OpenAI API Key (sk-...)" 
-                         className="w-full bg-canvas border border-border rounded-lg p-2.5 text-xs outline-none focus:border-accent font-mono" 
-                       />
-                       <input 
-                         type="password" 
-                         placeholder="Anthropic API Key (sk-ant-...)" 
-                         className="w-full bg-canvas border border-border rounded-lg p-2.5 text-xs outline-none focus:border-accent font-mono" 
-                       />
-                    </div>
-                  </div>
-                </div>
+                <IntegrationsManager />
               </div>
             </div>
           )}

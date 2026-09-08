@@ -4,9 +4,44 @@
  * that it can be bundled into `dist/server.cjs` and unit tested in isolation.
  */
 
-export type IntegrationId = 'asana' | 'keepa' | 'supabase' | 'sheets';
+export type IntegrationId =
+  | 'asana'
+  | 'keepa'
+  | 'supabase'
+  | 'sheets'
+  | 'drive'
+  | 'gemini'
+  | 'openrouter'
+  | 'huggingface'
+  | 'opencode'
+  | 'github'
+  | 'http'
+  | 'mcp';
 
-export const INTEGRATION_IDS: IntegrationId[] = ['asana', 'keepa', 'supabase', 'sheets'];
+export const INTEGRATION_IDS: IntegrationId[] = [
+  'asana',
+  'keepa',
+  'drive',
+  'supabase',
+  'sheets',
+  'gemini',
+  'openrouter',
+  'huggingface',
+  'opencode',
+  'github',
+  'http',
+  'mcp',
+];
+
+/** Groups used to lay the integrations out on the Connections page. */
+export type IntegrationCategory = 'sources' | 'destinations' | 'ai' | 'developer';
+
+export const INTEGRATION_CATEGORIES: { id: IntegrationCategory; title: string; blurb: string }[] = [
+  { id: 'sources', title: 'Data Sources', blurb: 'Pull rows into a workflow.' },
+  { id: 'destinations', title: 'Destinations', blurb: 'Write rows out of a workflow.' },
+  { id: 'ai', title: 'AI Providers', blurb: 'Models used by the AI and Insights nodes.' },
+  { id: 'developer', title: 'Developer Tools', blurb: 'Endpoints and tokens reused across nodes.' },
+];
 
 export interface AsanaConfig {
   accessToken?: string;
@@ -40,11 +75,69 @@ export interface SheetsConfig {
   accessToken?: string;
 }
 
+export interface DriveConfig {
+  folderId?: string;
+  folderName?: string;
+  accessToken?: string;
+}
+
+export interface GeminiConfig {
+  apiKey?: string;
+  model?: string;
+}
+
+export interface OpenRouterConfig {
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+  appName?: string;
+}
+
+export interface HuggingFaceConfig {
+  token?: string;
+  model?: string;
+  endpointUrl?: string;
+}
+
+export interface OpencodeConfig {
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+}
+
+export interface GithubConfig {
+  token?: string;
+  owner?: string;
+  repo?: string;
+  apiBaseUrl?: string;
+}
+
+/** Saved defaults reused by HTTP nodes ("custom HTTP saves"). */
+export interface HttpConfig {
+  baseUrl?: string;
+  headers?: string;
+  authHeader?: string;
+  timeoutMs?: number;
+}
+
+export interface McpConfig {
+  serverUrl?: string;
+  transport?: 'websocket' | 'sse' | 'http';
+}
+
 export interface IntegrationConfigMap {
   asana: AsanaConfig;
   keepa: KeepaConfig;
   supabase: SupabaseConfig;
   sheets: SheetsConfig;
+  drive: DriveConfig;
+  gemini: GeminiConfig;
+  openrouter: OpenRouterConfig;
+  huggingface: HuggingFaceConfig;
+  opencode: OpencodeConfig;
+  github: GithubConfig;
+  http: HttpConfig;
+  mcp: McpConfig;
 }
 
 export interface IntegrationField {
@@ -61,9 +154,19 @@ export interface IntegrationSchema {
   id: IntegrationId;
   name: string;
   description: string;
+  category: IntegrationCategory;
   /** Fields that must be present before any node of this kind can run. */
   requiredKeys: string[];
   fields: IntegrationField[];
+  /**
+   * False when there is no endpoint we can meaningfully probe, so the UI hides
+   * the Test Connection button rather than faking a result.
+   */
+  testable?: boolean;
+  /** Authorizes with the connected Google account instead of a stored key. */
+  requiresGoogleAuth?: boolean;
+  /** Set when the credentials are stored but no node consumes them yet. */
+  configOnlyNote?: string;
 }
 
 /** Keepa marketplace ids, see https://keepa.com/#!discuss/t/product-object/116 */
@@ -85,6 +188,8 @@ export const INTEGRATION_SCHEMAS: Record<IntegrationId, IntegrationSchema> = {
     id: 'asana',
     name: 'Asana',
     description: 'Pull tasks from a project or an assignee task list.',
+    category: 'sources',
+    testable: true,
     requiredKeys: ['accessToken'],
     fields: [
       { key: 'accessToken', label: 'Personal Access Token', type: 'password', required: true, placeholder: '1/1234567890:abcdef...', help: 'Asana profile settings, Apps, Manage Developer Apps.' },
@@ -99,6 +204,8 @@ export const INTEGRATION_SCHEMAS: Record<IntegrationId, IntegrationSchema> = {
     id: 'keepa',
     name: 'Keepa',
     description: 'Pull Amazon product data, pricing and sales rank by ASIN.',
+    category: 'sources',
+    testable: true,
     requiredKeys: ['apiKey'],
     fields: [
       { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Keepa API key', help: 'keepa.com, API access.' },
@@ -111,6 +218,8 @@ export const INTEGRATION_SCHEMAS: Record<IntegrationId, IntegrationSchema> = {
     id: 'supabase',
     name: 'Supabase',
     description: 'Push rows into a Postgres table over the REST API.',
+    category: 'destinations',
+    testable: true,
     requiredKeys: ['url', 'apiKey'],
     fields: [
       { key: 'url', label: 'Project URL', type: 'text', required: true, placeholder: 'https://xxxxx.supabase.co' },
@@ -124,6 +233,9 @@ export const INTEGRATION_SCHEMAS: Record<IntegrationId, IntegrationSchema> = {
     id: 'sheets',
     name: 'Google Sheets',
     description: 'Push rows into a spreadsheet tab.',
+    category: 'destinations',
+    testable: true,
+    requiresGoogleAuth: true,
     requiredKeys: ['spreadsheetId'],
     fields: [
       { key: 'spreadsheetId', label: 'Default Spreadsheet ID', type: 'text', required: true, placeholder: '1BxiMVs0XRY...', help: 'The long id in the sheet URL.' },
@@ -133,6 +245,116 @@ export const INTEGRATION_SCHEMAS: Record<IntegrationId, IntegrationSchema> = {
       { key: 'accessToken', label: 'OAuth Access Token Override', type: 'password', placeholder: 'ya29...', help: 'Optional. Leave blank to use the connected Google account.' },
     ],
   },
+  drive: {
+    id: 'drive',
+    name: 'Google Drive',
+    description: 'Read and write files, scoped to a default folder.',
+    category: 'sources',
+    testable: true,
+    requiresGoogleAuth: true,
+    requiredKeys: [],
+    fields: [
+      { key: 'folderId', label: 'Default Folder ID', type: 'text', placeholder: '1AbCdEfGhIjK...', help: 'The id in the folder URL. Leave blank for My Drive.' },
+      { key: 'folderName', label: 'Folder Label', type: 'text', placeholder: 'Bernie exports', help: 'Shown on Drive nodes so you can tell folders apart.' },
+      { key: 'accessToken', label: 'OAuth Access Token Override', type: 'password', placeholder: 'ya29...', help: 'Optional. Leave blank to use the connected Google account.' },
+    ],
+  },
+  gemini: {
+    id: 'gemini',
+    name: 'Gemini',
+    description: 'Powers the AI Agent and AI Insights nodes.',
+    category: 'ai',
+    testable: true,
+    requiredKeys: ['apiKey'],
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'AIza...', help: 'aistudio.google.com. Overrides the server GEMINI_API_KEY.' },
+      { key: 'model', label: 'Default Model', type: 'text', placeholder: 'gemini-3.1-pro-preview' },
+    ],
+  },
+  openrouter: {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    description: 'One key for many hosted models, reachable from HTTP nodes.',
+    category: 'ai',
+    testable: true,
+    requiredKeys: ['apiKey'],
+    configOnlyNote: 'Stored for HTTP nodes. The AI nodes still run on Gemini.',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'sk-or-v1-...', help: 'openrouter.ai/keys.' },
+      { key: 'model', label: 'Default Model', type: 'text', placeholder: 'anthropic/claude-sonnet-4.5' },
+      { key: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'https://openrouter.ai/api/v1' },
+      { key: 'appName', label: 'App Name (X-Title header)', type: 'text', placeholder: 'Bernie' },
+    ],
+  },
+  huggingface: {
+    id: 'huggingface',
+    name: 'Hugging Face',
+    description: 'Inference API or a dedicated endpoint, reachable from HTTP nodes.',
+    category: 'ai',
+    testable: true,
+    requiredKeys: ['token'],
+    configOnlyNote: 'Stored for HTTP nodes. The AI nodes still run on Gemini.',
+    fields: [
+      { key: 'token', label: 'Access Token', type: 'password', required: true, placeholder: 'hf_...', help: 'huggingface.co/settings/tokens.' },
+      { key: 'model', label: 'Default Model', type: 'text', placeholder: 'meta-llama/Llama-3.3-70B-Instruct' },
+      { key: 'endpointUrl', label: 'Dedicated Endpoint URL', type: 'text', placeholder: 'https://xxxx.endpoints.huggingface.cloud', help: 'Optional. Leave blank to use the shared Inference API.' },
+    ],
+  },
+  opencode: {
+    id: 'opencode',
+    name: 'opencode',
+    description: 'A local or remote opencode server, reachable from HTTP nodes.',
+    category: 'developer',
+    testable: true,
+    requiredKeys: ['baseUrl'],
+    configOnlyNote: 'Stored for HTTP nodes. There is no dedicated opencode node yet.',
+    fields: [
+      { key: 'baseUrl', label: 'Server URL', type: 'text', required: true, placeholder: 'http://localhost:4096', help: 'Start one with: opencode serve.' },
+      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Optional bearer token' },
+      { key: 'model', label: 'Default Model', type: 'text', placeholder: 'anthropic/claude-sonnet-4.5' },
+    ],
+  },
+  github: {
+    id: 'github',
+    name: 'GitHub',
+    description: 'Token and default repo for the GitHub and HTTP nodes.',
+    category: 'developer',
+    testable: true,
+    requiredKeys: ['token'],
+    fields: [
+      { key: 'token', label: 'Personal Access Token', type: 'password', required: true, placeholder: 'ghp_... or github_pat_...', help: 'github.com/settings/tokens.' },
+      { key: 'owner', label: 'Default Owner', type: 'text', placeholder: 'gabelmz' },
+      { key: 'repo', label: 'Default Repository', type: 'text', placeholder: 'bernie' },
+      { key: 'apiBaseUrl', label: 'API Base URL', type: 'text', placeholder: 'https://api.github.com', help: 'Change only for GitHub Enterprise.' },
+    ],
+  },
+  http: {
+    id: 'http',
+    name: 'Custom HTTP Saves',
+    description: 'A saved base URL and headers that HTTP nodes reuse.',
+    category: 'developer',
+    testable: true,
+    requiredKeys: ['baseUrl'],
+    fields: [
+      { key: 'baseUrl', label: 'Base URL', type: 'text', required: true, placeholder: 'https://api.example.com' },
+      { key: 'authHeader', label: 'Authorization Header', type: 'password', placeholder: 'Bearer abc123', help: 'Sent as the Authorization header.' },
+      { key: 'headers', label: 'Default Headers (JSON)', type: 'textarea', placeholder: '{"X-Api-Version": "2024-01"}' },
+      { key: 'timeoutMs', label: 'Timeout (ms)', type: 'number', placeholder: '15000' },
+    ],
+  },
+  mcp: {
+    id: 'mcp',
+    name: 'Model Context Protocol',
+    description: 'An MCP server endpoint saved for future node discovery.',
+    category: 'developer',
+    testable: false,
+    requiredKeys: ['serverUrl'],
+    configOnlyNote: 'Saved only. Bernie does not connect to MCP servers yet.',
+    fields: [
+      { key: 'serverUrl', label: 'Server URL', type: 'text', required: true, placeholder: 'ws://localhost:3001' },
+      { key: 'transport', label: 'Transport', type: 'select', options: [{ value: 'websocket', label: 'WebSocket' }, { value: 'sse', label: 'Server-Sent Events' }, { value: 'http', label: 'Streamable HTTP' }] },
+    ],
+  },
 };
 
 export const DEFAULT_INTEGRATION_CONFIG: IntegrationConfigMap = {
@@ -140,7 +362,20 @@ export const DEFAULT_INTEGRATION_CONFIG: IntegrationConfigMap = {
   keepa: { domain: 1, statsDays: 30 },
   supabase: { mode: 'insert' },
   sheets: { sheetName: 'Sheet1', mode: 'append', includeHeaders: true },
+  drive: {},
+  gemini: { model: 'gemini-3.1-pro-preview' },
+  openrouter: { baseUrl: 'https://openrouter.ai/api/v1', appName: 'Bernie' },
+  huggingface: {},
+  opencode: { baseUrl: 'http://localhost:4096' },
+  github: { apiBaseUrl: 'https://api.github.com' },
+  http: { timeoutMs: 15000 },
+  mcp: { transport: 'websocket' },
 };
+
+/** The integrations belonging to one Connections-page group, in display order. */
+export function integrationsInCategory(category: IntegrationCategory): IntegrationId[] {
+  return INTEGRATION_IDS.filter((id) => INTEGRATION_SCHEMAS[id].category === category);
+}
 
 function isBlank(value: any): boolean {
   return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
@@ -530,6 +765,67 @@ export function buildKeepaProductUrl(config: KeepaConfig, asins: string[]): stri
   }
 
   return `https://api.keepa.com/product?${params.toString()}`;
+}
+
+/** Parses a headers value that may arrive as an object or a JSON string. */
+export function parseHeaders(value: any): Record<string, string> {
+  if (!value) return {};
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const out: Record<string, string> = {};
+    Object.entries(value).forEach(([key, val]) => {
+      if (val !== undefined && val !== null) out[key] = String(val);
+    });
+    return out;
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parseHeaders(parsed) : {};
+    } catch {
+      // A malformed header blob is ignored rather than failing the request.
+      return {};
+    }
+  }
+  return {};
+}
+
+export interface ResolvedHttpRequest {
+  url: string;
+  headers: Record<string, string>;
+  timeoutMs?: number;
+}
+
+/**
+ * Applies the saved "custom HTTP" defaults to a node's request: a relative URL
+ * is resolved against the saved base URL, and the saved headers are merged
+ * underneath the node's own, so per-node values always win.
+ */
+export function applyHttpDefaults(
+  config: HttpConfig | undefined,
+  request: { url?: string; headers?: Record<string, string> | string }
+): ResolvedHttpRequest {
+  const cfg = config || {};
+  const baseUrl = String(cfg.baseUrl || '').trim().replace(/\/+$/, '');
+  const rawUrl = String(request.url || '').trim();
+
+  let url = rawUrl;
+  if (rawUrl && !/^[a-z][a-z0-9+.-]*:\/\//i.test(rawUrl) && baseUrl) {
+    url = `${baseUrl}/${rawUrl.replace(/^\/+/, '')}`;
+  } else if (!rawUrl && baseUrl) {
+    url = baseUrl;
+  }
+
+  const headers: Record<string, string> = parseHeaders(cfg.headers);
+  const authHeader = String(cfg.authHeader || '').trim();
+  if (authHeader) headers.Authorization = authHeader;
+  Object.assign(headers, parseHeaders(request.headers));
+
+  const timeoutMs = Number(cfg.timeoutMs);
+  return {
+    url,
+    headers,
+    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? Math.trunc(timeoutMs) : undefined,
+  };
 }
 
 export interface RowSummary {

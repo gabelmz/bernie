@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { AiNodeData } from '../../types';
 import { Sparkles, MessageSquare } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
+import { configFor } from '../../lib/integrations';
 
 export function AiNode({ data, id }: NodeProps & { data: AiNodeData }) {
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,8 @@ export function AiNode({ data, id }: NodeProps & { data: AiNodeData }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           inputData: data.inputData || { text: "No input data provided" },
-          prompt: prompt
+          prompt: prompt,
+          config: configFor('gemini')
         })
       });
       const result = await res.json();

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, AlertTriangle, Loader2, Save, Plug } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Loader2, Save, Plug, Info } from 'lucide-react';
 import {
   INTEGRATION_SCHEMAS,
   IntegrationField,
@@ -36,8 +36,10 @@ export function IntegrationConfigForm({ id, config, onChange, onSave }: Integrat
     setTesting(true);
     setTestResult(null);
     try {
-      // Sheets authorizes with the connected Google account rather than a key.
-      const accessToken = id === 'sheets' ? config.accessToken || (await getAccessToken()) || undefined : undefined;
+      // Google integrations authorize with the connected account, not a key.
+      const accessToken = schema.requiresGoogleAuth
+        ? config.accessToken || (await getAccessToken()) || undefined
+        : undefined;
       const result = await postJson('/api/integrations/test', { id, config, accessToken });
       setTestResult({ ok: true, message: result.detail || 'Connection succeeded.' });
     } catch (err: any) {
@@ -123,6 +125,13 @@ export function IntegrationConfigForm({ id, config, onChange, onSave }: Integrat
         </div>
       )}
 
+      {schema.configOnlyNote && (
+        <div className="text-xs bg-surface border border-border text-text-muted rounded-lg p-2.5 flex items-start gap-2">
+          <Info className="w-4 h-4 shrink-0 mt-px" />
+          <span>{schema.configOnlyNote}</span>
+        </div>
+      )}
+
       {schema.fields.map(renderField)}
 
       <div className="flex items-center gap-2 pt-1">
@@ -133,14 +142,16 @@ export function IntegrationConfigForm({ id, config, onChange, onSave }: Integrat
           <Save className="w-3.5 h-3.5" />
           Save
         </button>
-        <button
-          onClick={runTest}
-          disabled={testing || !valid}
-          className="flex items-center gap-2 px-4 py-2 bg-surface border border-border text-text-main hover:border-text-muted rounded-lg text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />}
-          {testing ? 'Testing...' : 'Test Connection'}
-        </button>
+        {schema.testable !== false && (
+          <button
+            onClick={runTest}
+            disabled={testing || !valid}
+            className="flex items-center gap-2 px-4 py-2 bg-surface border border-border text-text-main hover:border-text-muted rounded-lg text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />}
+            {testing ? 'Testing...' : 'Test Connection'}
+          </button>
+        )}
       </div>
 
       {testResult && (

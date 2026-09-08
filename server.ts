@@ -5,10 +5,12 @@ import { GoogleGenAI } from "@google/genai";
 import cors from "cors";
 import {
   AsanaConfig,
+  GeminiConfig,
   IntegrationId,
   KeepaConfig,
   SheetsConfig,
   SupabaseConfig,
+  INTEGRATION_SCHEMAS,
   buildAsanaTasksUrl,
   buildKeepaProductUrl,
   buildSheetValues,
@@ -44,8 +46,9 @@ try {
 
 // API Routes
 app.post("/api/ai/execute", async (req, res) => {
-  if (!ai) {
-    return res.status(500).json({ error: "Gemini API key not configured." });
+  const gemini = geminiFor(req.body?.config);
+  if (!gemini) {
+    return res.status(400).json({ error: GEMINI_UNCONFIGURED });
   }
   try {
     const { prompt, inputData } = req.body;
@@ -57,21 +60,22 @@ app.post("/api/ai/execute", async (req, res) => {
       ${typeof inputData === 'object' ? JSON.stringify(inputData, null, 2) : inputData}
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+    const response = await gemini.client.models.generateContent({
+      model: gemini.model,
       contents: finalPrompt,
     });
 
     res.json({ result: response.text });
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI execution error:", error);
-    res.status(500).json({ error: "Failed to generate AI response" });
+    res.status(500).json({ error: error?.message || "Failed to generate AI response." });
   }
 });
 
 app.post("/api/ai/suggest", async (req, res) => {
-  if (!ai) {
-    return res.status(500).json({ error: "Gemini API key not configured." });
+  const gemini = geminiFor(req.body?.config);
+  if (!gemini) {
+    return res.status(400).json({ error: GEMINI_UNCONFIGURED });
   }
   try {
     const { nodes, edges } = req.body;
@@ -90,22 +94,23 @@ app.post("/api/ai/suggest", async (req, res) => {
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+    const response = await gemini.client.models.generateContent({
+      model: gemini.model,
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
 
     res.json(JSON.parse(response.text || "{}"));
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI suggestion error:", error);
-    res.status(500).json({ error: "Failed to generate suggestions" });
+    res.status(500).json({ error: error?.message || "Failed to generate suggestions." });
   }
 });
 
 app.post("/api/ai/parse-request", async (req, res) => {
-  if (!ai) {
-    return res.status(500).json({ error: "Gemini API key not configured." });
+  const gemini = geminiFor(req.body?.config);
+  if (!gemini) {
+    return res.status(400).json({ error: GEMINI_UNCONFIGURED });
   }
   try {
     const { snippet } = req.body;
@@ -127,16 +132,16 @@ app.post("/api/ai/parse-request", async (req, res) => {
       Do not include any markdown formatting or extra text, just return the JSON object.
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+    const response = await gemini.client.models.generateContent({
+      model: gemini.model,
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
 
     res.json(JSON.parse(response.text || "{}"));
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI parse error:", error);
-    res.status(500).json({ error: "Failed to parse snippet" });
+    res.status(500).json({ error: error?.message || "Failed to parse snippet." });
   }
 });
 
@@ -198,6 +203,34 @@ function envConfig(id: IntegrationId): Record<string, any> {
         spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
         sheetName: process.env.SHEETS_TAB_NAME,
       };
+    case "gemini":
+      return {
+        apiKey: process.env.GEMINI_API_KEY,
+        model: process.env.GEMINI_MODEL,
+      };
+    case "openrouter":
+      return {
+        apiKey: process.env.OPENROUTER_API_KEY,
+        model: process.env.OPENROUTER_MODEL,
+        baseUrl: process.env.OPENROUTER_BASE_URL,
+      };
+    case "huggingface":
+      return {
+        token: process.env.HUGGINGFACE_TOKEN,
+        model: process.env.HUGGINGFACE_MODEL,
+      };
+    case "opencode":
+      return {
+        baseUrl: process.env.OPENCODE_BASE_URL,
+        apiKey: process.env.OPENCODE_API_KEY,
+      };
+    case "github":
+      return {
+        token: process.env.GITHUB_TOKEN,
+        owner: process.env.GITHUB_OWNER,
+        repo: process.env.GITHUB_REPO,
+        apiBaseUrl: process.env.GITHUB_API_BASE_URL,
+      };
     default:
       return {};
   }
@@ -227,6 +260,42 @@ async function readJsonResponse(response: Response): Promise<any> {
     return JSON.parse(text);
   } catch {
     return text;
+  }
+}
+
+/**
+ * Resolves the Gemini client and model for one request. A key configured on the
+ * Connections page takes precedence over GEMINI_API_KEY; the process-wide
+ * client is reused whenever the key matches the one it was built with.
+ */
+function geminiFor(requestConfig: any): { client: GoogleGenAI; model: string } | null {
+  const config = mergedConfig<GeminiConfig>("gemini", requestConfig);
+  const apiKey = String(config.apiKey || "").trim();
+  const model = String(config.model || "").trim() || AI_MODEL;
+
+  if (!apiKey) return ai ? { client: ai, model } : null;
+  if (ai && apiKey === String(process.env.GEMINI_API_KEY || "").trim()) return { client: ai, model };
+
+  try {
+    return { client: new GoogleGenAI({ apiKey }), model };
+  } catch (err) {
+    console.warn("Failed to build a Gemini client for this request", err);
+    return null;
+  }
+}
+
+const GEMINI_UNCONFIGURED = "Gemini is not configured. Add an API key under Connections & APIs.";
+
+/**
+ * Fetch for connection tests. A refused or unresolvable host throws a bare
+ * "fetch failed", so this restates it in terms of the URL the user typed.
+ */
+async function probe(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err: any) {
+    const cause = err?.cause?.code || err?.message || "network error";
+    throw new Error(`Could not reach ${url} (${cause}).`);
   }
 }
 
@@ -397,8 +466,9 @@ app.post("/api/sheets/rows", async (req, res) => {
 });
 
 app.post("/api/ai/insights", async (req, res) => {
-  if (!ai) {
-    return res.status(500).json({ error: "Gemini API key not configured." });
+  const gemini = geminiFor(req.body?.config);
+  if (!gemini) {
+    return res.status(400).json({ error: GEMINI_UNCONFIGURED });
   }
 
   try {
@@ -434,8 +504,8 @@ app.post("/api/ai/insights", async (req, res) => {
       Use an empty array when a section has nothing worth reporting. Never invent fields or values that are not in the data.
     `;
 
-    const response = await ai.models.generateContent({
-      model: String(req.body?.model || AI_MODEL),
+    const response = await gemini.client.models.generateContent({
+      model: String(req.body?.model || gemini.model),
       contents: prompt,
       config: { responseMimeType: "application/json" },
     });
@@ -463,8 +533,12 @@ app.post("/api/ai/insights", async (req, res) => {
 /** Credential smoke test used by the Integrations page. */
 app.post("/api/integrations/test", async (req, res) => {
   const id = String(req.body?.id || "") as IntegrationId;
-  if (!["asana", "keepa", "supabase", "sheets"].includes(id)) {
+  const schema = INTEGRATION_SCHEMAS[id];
+  if (!schema) {
     return res.status(400).json({ error: `Unknown integration "${id}".` });
+  }
+  if (schema.testable === false) {
+    return res.status(400).json({ error: `${schema.name} has no endpoint to test against.` });
   }
 
   const config = mergedConfig<Record<string, any>>(id, req.body?.config);
@@ -472,7 +546,7 @@ app.post("/api/integrations/test", async (req, res) => {
 
   try {
     if (id === "asana") {
-      const response = await fetch("https://app.asana.com/api/1.0/users/me?opt_fields=name,email", {
+      const response = await probe("https://app.asana.com/api/1.0/users/me?opt_fields=name,email", {
         headers: { Authorization: `Bearer ${String(config.accessToken).trim()}` },
       });
       const payload = await readJsonResponse(response);
@@ -484,7 +558,7 @@ app.post("/api/integrations/test", async (req, res) => {
     }
 
     if (id === "keepa") {
-      const response = await fetch(`https://api.keepa.com/token?key=${encodeURIComponent(String(config.apiKey).trim())}`);
+      const response = await probe(`https://api.keepa.com/token?key=${encodeURIComponent(String(config.apiKey).trim())}`);
       const payload = await readJsonResponse(response);
       if (!response.ok || payload?.error) {
         return res.status(response.ok ? 400 : response.status).json({ error: "Keepa: API key rejected." });
@@ -499,7 +573,7 @@ app.post("/api/integrations/test", async (req, res) => {
       const url = table
         ? `${base}/rest/v1/${encodeURIComponent(table)}?select=*&limit=1`
         : `${base}/rest/v1/`;
-      const response = await fetch(url, {
+      const response = await probe(url, {
         headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` },
       });
       if (!response.ok) {
@@ -512,12 +586,119 @@ app.post("/api/integrations/test", async (req, res) => {
       return res.json({ ok: true, detail: table ? `Table "${table}" is reachable.` : "Project REST API is reachable." });
     }
 
+    if (id === "gemini") {
+      const response = await probe(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(String(config.apiKey).trim())}`
+      );
+      const payload = await readJsonResponse(response);
+      if (!response.ok) {
+        const detail = payload?.error?.message;
+        return res.status(response.status).json({ error: detail ? `Gemini: ${detail}` : "Gemini key rejected." });
+      }
+      const count = Array.isArray(payload?.models) ? payload.models.length : 0;
+      return res.json({ ok: true, detail: `Key accepted, ${count} models available.` });
+    }
+
+    if (id === "openrouter") {
+      const base = String(config.baseUrl || "https://openrouter.ai/api/v1").trim().replace(/\/+$/, "");
+      const response = await probe(`${base}/key`, {
+        headers: { Authorization: `Bearer ${String(config.apiKey).trim()}` },
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) {
+        const detail = payload?.error?.message || payload?.message;
+        return res.status(response.status).json({ error: detail ? `OpenRouter: ${detail}` : "OpenRouter key rejected." });
+      }
+      const label = payload?.data?.label ? `key "${payload.data.label}"` : "key accepted";
+      return res.json({ ok: true, detail: `OpenRouter ${label}.` });
+    }
+
+    if (id === "huggingface") {
+      const response = await probe("https://huggingface.co/api/whoami-v2", {
+        headers: { Authorization: `Bearer ${String(config.token).trim()}` },
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Hugging Face: token rejected." });
+      }
+      return res.json({ ok: true, detail: `Connected as ${payload?.name || "Hugging Face user"}.` });
+    }
+
+    if (id === "github") {
+      const base = String(config.apiBaseUrl || "https://api.github.com").trim().replace(/\/+$/, "");
+      const response = await probe(`${base}/user`, {
+        headers: {
+          Authorization: `Bearer ${String(config.token).trim()}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "bernie-workflow-canvas",
+        },
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) {
+        const detail = payload?.message;
+        return res.status(response.status).json({ error: detail ? `GitHub: ${detail}` : "GitHub token rejected." });
+      }
+      return res.json({ ok: true, detail: `Connected as ${payload?.login || "GitHub user"}.` });
+    }
+
+    if (id === "opencode") {
+      const base = String(config.baseUrl).trim().replace(/\/+$/, "");
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (config.apiKey) headers.Authorization = `Bearer ${String(config.apiKey).trim()}`;
+      const response = await probe(`${base}/config`, { headers });
+      if (!response.ok) {
+        return res.status(response.status).json({
+          error: `opencode: server at ${base} answered ${response.status}. Is "opencode serve" running there?`,
+        });
+      }
+      return res.json({ ok: true, detail: `opencode server reachable at ${base}.` });
+    }
+
+    if (id === "http") {
+      const url = String(config.baseUrl).trim();
+      const headers: Record<string, string> = {};
+      if (config.authHeader) headers.Authorization = String(config.authHeader).trim();
+      if (config.headers) {
+        try {
+          Object.assign(headers, JSON.parse(String(config.headers)));
+        } catch {
+          return res.status(400).json({ error: "Custom HTTP Saves: default headers are not valid JSON." });
+        }
+      }
+      const response = await probe(url, { headers });
+      // Any answer proves the endpoint is reachable; report the status as-is.
+      return res.json({ ok: true, detail: `${url} answered ${response.status} ${response.statusText}.` });
+    }
+
+    if (id === "drive") {
+      const driveToken = String(req.body?.accessToken || config.accessToken || "").trim();
+      if (!driveToken) {
+        return res.status(401).json({ error: "Google Drive: connect a Google account first." });
+      }
+      const folderId = String(config.folderId || "").trim();
+      const url = folderId
+        ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=name,mimeType`
+        : "https://www.googleapis.com/drive/v3/about?fields=user";
+      const response = await probe(url, { headers: { Authorization: `Bearer ${driveToken}` } });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) {
+        const detail = payload?.error?.message;
+        return res.status(response.status).json({ error: detail ? `Google Drive: ${detail}` : "Drive not reachable." });
+      }
+      return res.json({
+        ok: true,
+        detail: folderId
+          ? `Folder "${payload?.name || folderId}" is reachable.`
+          : `Connected as ${payload?.user?.emailAddress || "Google user"} (My Drive).`,
+      });
+    }
+
     // sheets
     const accessToken = String(req.body?.accessToken || config.accessToken || "").trim();
     if (!accessToken) {
       return res.status(401).json({ error: "Google Sheets: connect a Google account first." });
     }
-    const response = await fetch(
+    const response = await probe(
       `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(String(config.spreadsheetId).trim())}?fields=properties.title`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
@@ -529,7 +710,8 @@ app.post("/api/integrations/test", async (req, res) => {
     return res.json({ ok: true, detail: `Opened "${payload?.properties?.title || "spreadsheet"}".` });
   } catch (err: any) {
     console.error(`Integration test failed for ${id}:`, err);
-    res.status(500).json({ error: err?.message || "Connection test failed." });
+    const unreachable = /Could not reach/.test(String(err?.message));
+    res.status(unreachable ? 502 : 500).json({ error: err?.message || "Connection test failed." });
   }
 });
 

@@ -3,6 +3,8 @@ import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
 import { HttpNodeData } from '../../types';
 import { Play, Globe, Code2, Wand2, X } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
+import { applyHttpDefaults } from '../../lib/integrationCore';
+import { configFor } from '../../lib/integrations';
 
 export function HttpNode({ data, id }: NodeProps & { data: HttpNodeData }) {
   const [loading, setLoading] = useState(false);
@@ -50,13 +52,16 @@ export function HttpNode({ data, id }: NodeProps & { data: HttpNodeData }) {
     setLoading(true);
     setError(null);
     try {
+      // Fold in the saved Custom HTTP defaults; node values win over them.
+      const resolved = applyHttpDefaults(configFor('http'), { url: data.url, headers: data.headers });
+
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: data.url,
+          url: resolved.url,
           method: data.method,
-          headers: data.headers,
+          headers: resolved.headers,
           body: data.requestBody || data.inputData
         })
       });

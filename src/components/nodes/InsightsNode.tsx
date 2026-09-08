@@ -4,6 +4,7 @@ import { Lightbulb, Sparkles, AlertTriangle, TrendingUp } from 'lucide-react';
 import { AiInsight, InsightsNodeData } from '../../types';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 import { toRows } from '../../lib/integrationCore';
+import { configFor } from '../../lib/integrations';
 import { postJson } from '../../lib/nodeApi';
 
 const IMPACT_COLORS: Record<string, string> = {
@@ -40,6 +41,7 @@ export function InsightsNode({ data, id }: NodeProps & { data: InsightsNodeData 
         focus,
         sampleSize: data.sampleSize,
         model: data.model,
+        config: configFor('gemini'),
       });
       data.onDataFetched?.(id, { insights: result.insights, rowCount: result.rowCount, fields: result.fields });
     } catch (err: any) {
