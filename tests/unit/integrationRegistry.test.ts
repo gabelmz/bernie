@@ -67,11 +67,23 @@ describe('Integration registry', () => {
     expect(integrationsInCategory('developer')).toEqual(['opencode', 'github', 'http', 'mcp']);
   });
 
-  it('marks MCP as untestable so the UI hides its Test button', () => {
-    expect(INTEGRATION_SCHEMAS.mcp.testable).toBe(false);
-    INTEGRATION_IDS.filter((id) => id !== 'mcp').forEach((id) => {
+  it('has a live connection test for every integration', () => {
+    INTEGRATION_IDS.forEach((id) => {
       expect(INTEGRATION_SCHEMAS[id].testable, id).toBe(true);
     });
+  });
+
+  it('no longer claims any integration is stored but unused', () => {
+    // Every provider now has a node behind it, so a leftover note would lie.
+    INTEGRATION_IDS.forEach((id) => {
+      expect(INTEGRATION_SCHEMAS[id].configOnlyNote, id).toBeUndefined();
+    });
+  });
+
+  it('offers only the MCP transport that is actually implemented', () => {
+    const keys = INTEGRATION_SCHEMAS.mcp.fields.map((f) => f.key);
+    expect(keys).toEqual(['serverUrl']);
+    expect(INTEGRATION_SCHEMAS.mcp.fields[0].help).toMatch(/websocket and SSE transports are not implemented/i);
   });
 
   it('validates the new providers against their own required keys', () => {

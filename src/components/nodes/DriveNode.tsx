@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { DriveNodeData } from '../../types';
-import { getAccessToken } from '../../lib/firebase';
-import { Play, FileText, Database, Upload, Search } from 'lucide-react';
+import { getAccessToken } from '../../lib/auth';
+import { configFor } from '../../lib/integrations';
+import { postJson } from '../../lib/nodeApi';
+import { Play, FileText, Database, Upload, Search, FolderOpen } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 
 declare global {
@@ -102,7 +104,7 @@ export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
     setError(null);
     const token = await getAccessToken();
     if (!token) {
-      setError("Please Connect Workspace in the sidebar first.");
+      setError("No Google access. Sign in with Google under Connections & APIs.");
       return;
     }
 
@@ -146,12 +148,17 @@ export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
       if (data.inputData) {
         // Simple write to Drive
         const token = await getAccessToken();
-        if (!token) throw new Error("Not authenticated");
+        if (!token) throw new Error("No Google access. Sign in with Google under Connections & APIs.");
         
-        const metadata = {
+        // Land the export in the folder configured under Connections & APIs.
+        const driveConfig = configFor('drive', { folderId: data.folderId });
+        const metadata: Record<string, any> = {
           name: data.fileName || 'exported_data.json',
           mimeType: 'application/json'
         };
+        if (driveConfig.folderId) {
+          metadata.parents = [driveConfig.folderId];
+        }
         const fileContent = JSON.stringify(data.inputData);
         
         const form = new FormData();
@@ -173,8 +180,8 @@ export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
         const targetId = selectedFileId || data.fileId;
         if (!targetId) throw new Error("No file ID selected");
         const token = await getAccessToken();
-        if (!token) throw new Error("Not authenticated");
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${data.fileId}?alt=media`, {
+        if (!token) throw new Error("No Google access. Sign in with Google under Connections & APIs.");
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(targetId)}?alt=media`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -188,6 +195,29 @@ export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
     } catch (err: any) {
       setError(err.message);
       if (data.onDataFetched) data.onDataFetched(id, { error: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Lists the configured folder and emits one row per file. */
+  const listFolder = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("No Google access. Sign in with Google under Connections & APIs.");
+
+      const result = await postJson('/api/drive/files', {
+        config: configFor('drive', { folderId: data.folderId }),
+        accessToken: token,
+        query: data.query,
+        pageSize: data.pageSize,
+      });
+      data.onDataFetched?.(id, result.rows ?? []);
+    } catch (err: any) {
+      setError(err.message);
+      data.onDataFetched?.(id, { error: err.message });
     } finally {
       setLoading(false);
     }
@@ -247,6 +277,18 @@ export function DriveNode({ data, id }: NodeProps & { data: DriveNodeData }) {
             <Play className="w-4 h-4" />
             {loading ? 'Processing...' : (data.inputData ? 'Write to Drive' : 'Run Extraction')}
           </button>
+
+          {!data.inputData && (
+            <button
+              onClick={listFolder}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 bg-surface border border-border text-text-main hover:border-text-muted py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-[13px] tracking-wide"
+              title="Emit one row per file in the configured folder"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              List Folder as Rows
+            </button>
+          )}
 
           {error && <div className="text-[13px] text-red-400 bg-red-950/30 border border-red-900/50 p-2 rounded">{error}</div>}
 

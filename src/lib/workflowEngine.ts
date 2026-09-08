@@ -1,8 +1,12 @@
 import { Node, Edge } from '@xyflow/react';
-import { parseAsinList, toRows } from './integrationCore';
+import { toRows } from './integrationCore';
+import { parseAsinList } from './providerRequests';
 
 /** Nodes that write somewhere and therefore need rows arriving on their input. */
 export const SINK_NODE_TYPES = ['supabase', 'sheet', 'insights'] as const;
+
+/** Nodes that turn a prompt plus rows into text via a hosted model. */
+export const COMPLETION_NODE_TYPES = ['openrouter', 'huggingface', 'opencode'] as const;
 
 export interface WorkflowValidationIssue {
   type: 'error' | 'warning' | 'info';
@@ -224,6 +228,33 @@ export function validateWorkflow(nodes: Node[], edges: Edge[]): WorkflowValidati
           nodeId: node.id,
           message: `Supabase Node "${node.data?.title || node.id}" is set to upsert without a conflict column.`,
           suggestion: 'Set the on-conflict column(s), otherwise Postgres cannot merge duplicates.',
+        });
+      }
+    }
+
+    // The completion nodes cannot run without a model, and the model may come
+    // from either the node or the saved integration defaults.
+    if ((COMPLETION_NODE_TYPES as readonly string[]).includes(node.type || '')) {
+      const prompt = node.data?.prompt;
+      if (!prompt || (typeof prompt === 'string' && !prompt.trim())) {
+        issues.push({
+          type: 'info',
+          nodeId: node.id,
+          message: `"${node.data?.title || node.id}" has no prompt yet.`,
+          suggestion: 'Write a prompt on the node, or feed it rows and describe what to do with them.',
+        });
+      }
+    }
+
+    if (node.type === 'mcp') {
+      const tool = node.data?.tool;
+      const hasArgs = Boolean(node.data?.toolArguments);
+      if (!tool && hasArgs) {
+        issues.push({
+          type: 'warning',
+          nodeId: node.id,
+          message: `MCP Node "${node.data?.title || node.id}" has arguments but no tool to call.`,
+          suggestion: 'Name the tool, or clear the arguments to list the available tools instead.',
         });
       }
     }
@@ -477,6 +508,36 @@ export function executeNodeSimulation(node: Node, inputData: any): any {
         mode: data.mode === 'overwrite' ? 'overwrite' : 'append',
         written: rows.length,
       };
+    }
+    case 'openrouter':
+    case 'huggingface':
+    case 'opencode': {
+      const rows = toRows(inputData);
+      return {
+        simulated: true,
+        text: `Simulated ${node.type} completion over ${rows.length} row${rows.length === 1 ? '' : 's'}. Run the node to call the model.`,
+        model: data.model || '(from Integrations)',
+      };
+    }
+    case 'mcp': {
+      // Listing tools emits rows; calling one emits a result object.
+      if (data.tool) {
+        return {
+          simulated: true,
+          tool: data.tool,
+          text: `Dry runs do not call MCP tools. Run the node to call "${data.tool}".`,
+          isError: false,
+        };
+      }
+      return [
+        {
+          name: 'simulated_tool',
+          description: 'Dry runs do not contact the MCP server.',
+          required: null,
+          properties: null,
+          simulated: true,
+        },
+      ];
     }
     case 'insights': {
       const rows = toRows(inputData);

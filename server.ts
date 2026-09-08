@@ -1,48 +1,37 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import cors from "cors";
 import {
   AsanaConfig,
   GeminiConfig,
+  INTEGRATION_SCHEMAS,
   IntegrationId,
   KeepaConfig,
   SheetsConfig,
   SupabaseConfig,
-  INTEGRATION_SCHEMAS,
+  buildSheetValues,
+  resolveConfig,
+  summarizeRows,
+  toRows,
+  validateIntegrationConfig,
+} from './src/lib/integrationCore';
+import {
   buildAsanaTasksUrl,
   buildKeepaProductUrl,
-  buildSheetValues,
   buildSheetsRequest,
   buildSupabaseRequest,
   normalizeAsanaTasks,
   normalizeKeepaProducts,
   parseAsinList,
-  resolveConfig,
-  summarizeRows,
-  toRows,
-  validateIntegrationConfig,
-} from "./src/lib/integrationCore";
+} from './src/lib/providerRequests';
 
 const app = express();
 const PORT = 3000;
 
-const AI_MODEL = "gemini-3.1-pro-preview";
-
 app.use(cors());
 // Keepa batches and Asana pages can be large, so allow generous JSON bodies.
 app.use(express.json({ limit: "25mb" }));
-
-// Initialize Gemini API
-let ai: GoogleGenAI | null = null;
-try {
-  if (process.env.GEMINI_API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  }
-} catch (error) {
-  console.warn("Failed to initialize Gemini API", error);
-}
 
 // API Routes
 app.post("/api/ai/execute", async (req, res) => {
@@ -174,135 +163,20 @@ app.post("/api/proxy", async (req, res) => {
 /* Integrations: Asana, Keepa, Supabase, Google Sheets                        */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Server-side defaults for each integration. Request configs (sent from the
- * Integrations page) take precedence, so env vars only act as a fallback for
- * headless / deployed runs.
- */
-function envConfig(id: IntegrationId): Record<string, any> {
-  switch (id) {
-    case "asana":
-      return {
-        accessToken: process.env.ASANA_ACCESS_TOKEN,
-        workspaceGid: process.env.ASANA_WORKSPACE_GID,
-        projectGid: process.env.ASANA_PROJECT_GID,
-      };
-    case "keepa":
-      return {
-        apiKey: process.env.KEEPA_API_KEY,
-        domain: process.env.KEEPA_DOMAIN ? Number(process.env.KEEPA_DOMAIN) : undefined,
-      };
-    case "supabase":
-      return {
-        url: process.env.SUPABASE_URL,
-        apiKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
-        table: process.env.SUPABASE_TABLE,
-      };
-    case "sheets":
-      return {
-        spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
-        sheetName: process.env.SHEETS_TAB_NAME,
-      };
-    case "gemini":
-      return {
-        apiKey: process.env.GEMINI_API_KEY,
-        model: process.env.GEMINI_MODEL,
-      };
-    case "openrouter":
-      return {
-        apiKey: process.env.OPENROUTER_API_KEY,
-        model: process.env.OPENROUTER_MODEL,
-        baseUrl: process.env.OPENROUTER_BASE_URL,
-      };
-    case "huggingface":
-      return {
-        token: process.env.HUGGINGFACE_TOKEN,
-        model: process.env.HUGGINGFACE_MODEL,
-      };
-    case "opencode":
-      return {
-        baseUrl: process.env.OPENCODE_BASE_URL,
-        apiKey: process.env.OPENCODE_API_KEY,
-      };
-    case "github":
-      return {
-        token: process.env.GITHUB_TOKEN,
-        owner: process.env.GITHUB_OWNER,
-        repo: process.env.GITHUB_REPO,
-        apiBaseUrl: process.env.GITHUB_API_BASE_URL,
-      };
-    default:
-      return {};
-  }
-}
+import {
+  AI_MODEL,
+  GEMINI_UNCONFIGURED,
+  assertConfigured,
+  errorStatus,
+  geminiFor,
+  mergedConfig,
+  probe,
+  readJsonResponse,
+} from "./src/server/integrationKit";
+import { buildMcpRequest, mcpInitializeParams, parseMcpResponseBody } from "./src/lib/providerRequests";
+import { registerProviderRoutes } from "./src/server/providerRoutes";
 
-function mergedConfig<T extends Record<string, any>>(id: IntegrationId, requestConfig: any): T {
-  return resolveConfig(envConfig(id) as T, (requestConfig || {}) as Partial<T>);
-}
-
-/** Rejects the request when required credentials are still missing. */
-function assertConfigured(id: IntegrationId, config: Record<string, any>, res: express.Response): boolean {
-  const { valid, missing } = validateIntegrationConfig(id, config);
-  if (!valid) {
-    res.status(400).json({
-      error: `${id} is not configured yet: missing ${missing.join(", ")}.`,
-      missing,
-    });
-    return false;
-  }
-  return true;
-}
-
-async function readJsonResponse(response: Response): Promise<any> {
-  const text = await response.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-/**
- * Resolves the Gemini client and model for one request. A key configured on the
- * Connections page takes precedence over GEMINI_API_KEY; the process-wide
- * client is reused whenever the key matches the one it was built with.
- */
-function geminiFor(requestConfig: any): { client: GoogleGenAI; model: string } | null {
-  const config = mergedConfig<GeminiConfig>("gemini", requestConfig);
-  const apiKey = String(config.apiKey || "").trim();
-  const model = String(config.model || "").trim() || AI_MODEL;
-
-  if (!apiKey) return ai ? { client: ai, model } : null;
-  if (ai && apiKey === String(process.env.GEMINI_API_KEY || "").trim()) return { client: ai, model };
-
-  try {
-    return { client: new GoogleGenAI({ apiKey }), model };
-  } catch (err) {
-    console.warn("Failed to build a Gemini client for this request", err);
-    return null;
-  }
-}
-
-const GEMINI_UNCONFIGURED = "Gemini is not configured. Add an API key under Connections & APIs.";
-
-/**
- * Fetch for connection tests. A refused or unresolvable host throws a bare
- * "fetch failed", so this restates it in terms of the URL the user typed.
- */
-async function probe(url: string, init?: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, init);
-  } catch (err: any) {
-    const cause = err?.cause?.code || err?.message || "network error";
-    throw new Error(`Could not reach ${url} (${cause}).`);
-  }
-}
-
-function errorStatus(err: any): number {
-  // Config problems surfaced by the builders are the caller's fault.
-  return /required|provide at least|set a project|no rows/i.test(String(err?.message)) ? 400 : 500;
-}
+registerProviderRoutes(app);
 
 app.post("/api/asana/tasks", async (req, res) => {
   const config = mergedConfig<AsanaConfig>("asana", req.body?.config);
@@ -668,6 +542,30 @@ app.post("/api/integrations/test", async (req, res) => {
       const response = await probe(url, { headers });
       // Any answer proves the endpoint is reachable; report the status as-is.
       return res.json({ ok: true, detail: `${url} answered ${response.status} ${response.statusText}.` });
+    }
+
+    if (id === "mcp") {
+      const init = buildMcpRequest(config as any, "initialize", mcpInitializeParams(), 1);
+      const response = await probe(init.url, {
+        method: "POST",
+        headers: init.headers,
+        body: JSON.stringify(init.body),
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        return res.status(response.status).json({
+          error: `MCP: initialize failed (${response.status}). ${text.slice(0, 200)}`.trim(),
+        });
+      }
+      const payload = parseMcpResponseBody(text);
+      if (payload?.error) {
+        return res.status(502).json({ error: `MCP: ${payload.error?.message || "initialize was rejected."}` });
+      }
+      const info = payload?.result?.serverInfo;
+      return res.json({
+        ok: true,
+        detail: info?.name ? `Connected to ${info.name} ${info.version || ""}`.trim() + "." : "MCP server responded to initialize.",
+      });
     }
 
     if (id === "drive") {

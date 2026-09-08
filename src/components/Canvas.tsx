@@ -31,6 +31,10 @@ import { AsanaNode } from './nodes/AsanaNode';
 import { KeepaNode } from './nodes/KeepaNode';
 import { SupabaseNode } from './nodes/SupabaseNode';
 import { InsightsNode } from './nodes/InsightsNode';
+import { OpenRouterNode } from './nodes/OpenRouterNode';
+import { HuggingFaceNode } from './nodes/HuggingFaceNode';
+import { OpencodeNode } from './nodes/OpencodeNode';
+import { McpNode } from './nodes/McpNode';
 import { ChatNode } from './nodes/ChatNode';
 import { MeetNode } from './nodes/MeetNode';
 import { SlackNode } from './nodes/SlackNode';
@@ -109,6 +113,10 @@ const nodeTypes = {
   keepa: KeepaNode,
   supabase: SupabaseNode,
   insights: InsightsNode,
+  openrouter: OpenRouterNode,
+  huggingface: HuggingFaceNode,
+  opencode: OpencodeNode,
+  mcp: McpNode,
   http: HttpNode,
   ai: AiNode,
   text: TextNode,
@@ -832,6 +840,10 @@ export function Canvas() {
                   case 'keepa': return '#fb923c'; // orange
                   case 'supabase': return '#10b981'; // emerald
                   case 'insights': return '#facc15'; // yellow
+                  case 'openrouter': return '#818cf8'; // indigo
+                  case 'huggingface': return '#facc15'; // yellow
+                  case 'opencode': return '#22d3ee'; // cyan
+                  case 'mcp': return '#60a5fa'; // blue
                   default: return '#27272a';
                 }
               }}

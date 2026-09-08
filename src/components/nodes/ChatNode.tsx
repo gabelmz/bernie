@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { getAccessToken } from '../../lib/firebase';
+import { getAccessToken } from '../../lib/auth';
 import { Play, MessageCircle, Database } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 
@@ -15,7 +15,7 @@ export function ChatNode({ data, id }: NodeProps & { data: any }) {
     setError(null);
     try {
       const token = await getAccessToken();
-      if (!token) throw new Error("Not authenticated with Google. Connect Workspace in the sidebar.");
+      if (!token) throw new Error("No Google access. Sign in with Google under Connections & APIs.");
       
       const payloadMessage = data.inputData ? (typeof data.inputData === 'object' ? JSON.stringify(data.inputData) : data.inputData) : message;
 

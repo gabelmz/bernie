@@ -55,10 +55,17 @@ export function DocsPage({ onClose }: { onClose: () => void }) {
             left blank, so you set a token once and reuse it across the canvas.
           </p>
           <ul className="list-disc pl-5 space-y-1 mb-4">
-            <li><strong>Asana Tasks</strong> and <strong>Keepa Products</strong> are sources: they emit normalized rows.</li>
+            <li><strong>Asana Tasks</strong>, <strong>Keepa Products</strong> and <strong>Google Drive</strong> are sources: they emit normalized rows.</li>
             <li><strong>Supabase</strong> and <strong>Google Sheets</strong> are sinks: they write the rows they receive.</li>
             <li><strong>AI Insights</strong> analyses incoming rows and returns findings, anomalies and recommendations.</li>
+            <li><strong>OpenRouter</strong>, <strong>Hugging Face</strong> and <strong>opencode</strong> send a prompt plus your rows to a model and emit its text.</li>
+            <li><strong>MCP Tools</strong> lists the tools an MCP server exposes, or calls one with JSON arguments.</li>
           </ul>
+          <p className="leading-relaxed mb-4">
+            Google Drive and Google Sheets need a Google account. Sign in under <strong>Connections &amp; APIs</strong>:
+            Bernie authenticates through Supabase and uses the Google token it returns. That token lasts an hour and is
+            not refreshed, so the card offers a reconnect when it lapses.
+          </p>
           <p className="leading-relaxed">
             A typical pipeline is <span className="font-mono text-text-main">Keepa → AI Insights → Supabase</span>, or{' '}
             <span className="font-mono text-text-main">Asana → Google Sheets</span>. Run a source node and its rows

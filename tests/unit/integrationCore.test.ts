@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildSheetValues,
+  collectRowHeaders,
+  resolveConfig,
+  summarizeRows,
+  toRows,
+  validateIntegrationConfig,
+} from '@/lib/integrationCore';
+import {
   buildAsanaTasksUrl,
   buildKeepaProductUrl,
-  buildSheetValues,
   buildSheetsRequest,
   buildSupabaseRequest,
-  collectRowHeaders,
   decodeKeepaInt,
   decodeKeepaPrice,
   decodeKeepaRating,
@@ -14,11 +20,7 @@ import {
   normalizeAsanaTasks,
   normalizeKeepaProducts,
   parseAsinList,
-  resolveConfig,
-  summarizeRows,
-  toRows,
-  validateIntegrationConfig,
-} from '@/lib/integrationCore';
+} from '@/lib/providerRequests';
 
 describe('Integration config validation', () => {
   it('reports the missing required keys per integration', () => {

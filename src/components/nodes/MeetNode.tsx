@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { getAccessToken } from '../../lib/firebase';
+import { getAccessToken } from '../../lib/auth';
 import { Play, Video } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 
@@ -13,7 +13,7 @@ export function MeetNode({ data, id }: NodeProps & { data: any }) {
     setError(null);
     try {
       const token = await getAccessToken();
-      if (!token) throw new Error("Not authenticated with Google. Connect Workspace in the sidebar.");
+      if (!token) throw new Error("No Google access. Sign in with Google under Connections & APIs.");
 
       const res = await fetch(`https://meet.googleapis.com/v2/spaces`, {
         method: 'POST',

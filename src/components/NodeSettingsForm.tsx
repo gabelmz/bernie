@@ -243,6 +243,52 @@ export function NodeSettingsForm({ node }: NodeSettingsFormProps) {
             {renderField('Model', 'model', 'text', 'gemini-3.1-pro-preview')}
           </div>
         );
+      case 'openrouter':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('OpenRouter')}
+            {renderField('Prompt', 'prompt', 'textarea', 'Summarize the input rows...')}
+            {renderField('Model', 'model', 'text', 'anthropic/claude-sonnet-4.5')}
+            {renderField('System Prompt', 'systemPrompt', 'textarea', 'You are a concise analyst...')}
+            {renderField('Rows Sent To The Model', 'sampleSize', 'number', '40')}
+          </div>
+        );
+      case 'huggingface':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('Hugging Face')}
+            {renderField('Prompt', 'prompt', 'textarea', 'Summarize the input rows...')}
+            {renderField('Model', 'model', 'text', 'meta-llama/Llama-3.3-70B-Instruct')}
+            {renderField('Rows Sent To The Model', 'sampleSize', 'number', '40')}
+          </div>
+        );
+      case 'opencode':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('opencode')}
+            {renderField('Prompt', 'prompt', 'textarea', 'Review the failing test and propose a fix...')}
+            {renderField('Model', 'model', 'text', 'anthropic/claude-sonnet-4.5')}
+            {renderField('Session ID (blank starts a new session)', 'sessionId', 'text')}
+            {renderField('Rows Sent To The Model', 'sampleSize', 'number', '40')}
+          </div>
+        );
+      case 'mcp':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('MCP')}
+            {renderField('Tool Name (blank lists the tools)', 'tool', 'text', 'search_docs')}
+            {renderField('Tool Arguments (JSON)', 'toolArguments', 'json', '{"query": "billing"}')}
+          </div>
+        );
+      case 'drive':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('Google Drive')}
+            {renderField('Folder ID', 'folderId', 'text', 'Defaults to the configured folder')}
+            {renderField('Name Contains', 'query', 'text', 'invoice')}
+            {renderField('Max Files', 'pageSize', 'number', '25')}
+          </div>
+        );
       case 'slack':
         return (
           <div className="flex flex-col">

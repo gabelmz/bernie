@@ -7,7 +7,7 @@ import {
   validateIntegrationConfig,
 } from '../lib/integrationCore';
 import { postJson } from '../lib/nodeApi';
-import { getAccessToken } from '../lib/firebase';
+import { getAccessToken } from '../lib/auth';
 
 interface IntegrationConfigFormProps {
   id: IntegrationId;

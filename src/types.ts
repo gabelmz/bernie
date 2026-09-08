@@ -14,7 +14,11 @@ export type NodeType =
   | 'asana'
   | 'keepa'
   | 'supabase'
-  | 'insights';
+  | 'insights'
+  | 'openrouter'
+  | 'huggingface'
+  | 'opencode'
+  | 'mcp';
 
 export interface BaseNodeData {
   title: string;
@@ -35,6 +39,11 @@ export interface DriveNodeData extends BaseNodeData {
   fileId?: string;
   fileName?: string;
   mappedData?: any;
+  /** Overrides the folder saved in the Drive integration config. */
+  folderId?: string;
+  /** Name filter applied when listing a folder. */
+  query?: string;
+  pageSize?: number;
 }
 
 export interface TriggerNodeData extends BaseNodeData {
@@ -120,6 +129,25 @@ export interface AiInsight {
   keyFindings?: { title?: string; detail?: string; impact?: string }[];
   anomalies?: { title?: string; detail?: string; severity?: string }[];
   recommendations?: { action?: string; rationale?: string; priority?: string }[];
+}
+
+/**
+ * Shared shape for the text-completion nodes (OpenRouter, Hugging Face,
+ * opencode). Blank model/prompt fields inherit the saved integration defaults.
+ */
+export interface CompletionNodeData extends BaseNodeData {
+  prompt?: string;
+  model?: string;
+  systemPrompt?: string;
+  sampleSize?: number;
+  /** opencode only: reuse a session so successive prompts keep context. */
+  sessionId?: string;
+}
+
+/** Tool node: lists or calls the tools an MCP server exposes. */
+export interface McpNodeData extends BaseNodeData {
+  tool?: string;
+  toolArguments?: string | Record<string, any>;
 }
 
 /** Analysis node: turns incoming rows into structured AI insights. */

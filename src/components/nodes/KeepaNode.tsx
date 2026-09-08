@@ -4,7 +4,8 @@ import { Package, Play, AlertTriangle, Settings } from 'lucide-react';
 import { KeepaNodeData } from '../../types';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 import { configFor, integrationBlocker, INTEGRATIONS_CHANGED_EVENT } from '../../lib/integrations';
-import { KEEPA_DOMAINS, parseAsinList } from '../../lib/integrationCore';
+import { KEEPA_DOMAINS } from '../../lib/integrationCore';
+import { parseAsinList } from '../../lib/providerRequests';
 import { postJson } from '../../lib/nodeApi';
 
 /**

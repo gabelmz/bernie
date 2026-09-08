@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { initAuth } from '../lib/firebase';
-import { Database, Code2, Globe, Sparkles, FileText, Type, Terminal, Box, Trash2, Play , PanelRightClose, PanelRightOpen, ChevronRight, ChevronLeft, MessageCircle, Video, CheckCircle2, Package, Lightbulb, Table } from 'lucide-react';
-import { User } from 'firebase/auth';
+import { AuthUser, initAuth } from '../lib/auth';
+import { Database, Code2, Globe, Sparkles, FileText, Type, Terminal, Box, Trash2, Play , PanelRightClose, PanelRightOpen, ChevronRight, ChevronLeft, MessageCircle, Video, CheckCircle2, Package, Lightbulb, Table, Shuffle, Bot, Plug } from 'lucide-react';
 
 interface SidebarProps {
   onAddNode?: (type: string, data?: any) => void;
 }
 
 export function Sidebar({ onAddNode }: SidebarProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
   // Layout mode state
@@ -24,7 +23,9 @@ export function Sidebar({ onAddNode }: SidebarProps) {
       (u, t) => {
         setUser(u);
         setToken(t);
-        fetchRecentDriveFiles(t);
+        // Without a Google token there is nothing to list; the user needs to
+        // reconnect Google before Drive shows anything.
+        if (t) fetchRecentDriveFiles(t);
       },
       () => {
         setUser(null);
@@ -71,6 +72,10 @@ export function Sidebar({ onAddNode }: SidebarProps) {
     { type: 'supabase', title: 'Supabase', desc: 'Push rows to Postgres', data: { title: 'Supabase' }, Icon: Database, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
     { type: 'sheet', title: 'Google Sheets', desc: 'Push rows to a sheet', data: { title: 'Google Sheets' }, Icon: Table, iconColor: 'text-green-500', bgClass: 'bg-green-500/10' },
     { type: 'insights', title: 'AI Insights', desc: 'Analyse rows with AI', data: { title: 'AI Insights' }, Icon: Lightbulb, iconColor: 'text-yellow-400', bgClass: 'bg-yellow-400/10' },
+    { type: 'openrouter', title: 'OpenRouter', desc: 'Prompt a hosted model', data: { title: 'OpenRouter' }, Icon: Shuffle, iconColor: 'text-indigo-400', bgClass: 'bg-indigo-400/10' },
+    { type: 'huggingface', title: 'Hugging Face', desc: 'Run model inference', data: { title: 'Hugging Face' }, Icon: Bot, iconColor: 'text-yellow-400', bgClass: 'bg-yellow-400/10' },
+    { type: 'opencode', title: 'opencode', desc: 'Prompt an opencode server', data: { title: 'opencode' }, Icon: Terminal, iconColor: 'text-cyan-400', bgClass: 'bg-cyan-400/10' },
+    { type: 'mcp', title: 'MCP Tools', desc: 'List or call MCP tools', data: { title: 'MCP Server' }, Icon: Plug, iconColor: 'text-blue-400', bgClass: 'bg-blue-400/10' },
     { type: 'chat', title: 'Google Chat', desc: 'Send messages', data: { title: 'Google Chat' }, Icon: MessageCircle, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
     { type: 'meet', title: 'Google Meet', desc: 'Create meetings', data: { title: 'Google Meet' }, Icon: Video, iconColor: 'text-blue-500', bgClass: 'bg-blue-500/10' },
   ];

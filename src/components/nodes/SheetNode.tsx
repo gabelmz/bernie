@@ -6,7 +6,7 @@ import { NodeWrapper, NodeHeader } from './NodeWrapper';
 import { configFor, integrationBlocker, INTEGRATIONS_CHANGED_EVENT } from '../../lib/integrations';
 import { toRows } from '../../lib/integrationCore';
 import { postJson } from '../../lib/nodeApi';
-import { getAccessToken } from '../../lib/firebase';
+import { getAccessToken } from '../../lib/auth';
 
 /**
  * Sink node: pushes the rows arriving on its input into a Google Sheets tab.
@@ -55,7 +55,7 @@ export function SheetNode({ data, id }: NodeProps & { data: SheetsNodeData }) {
         accessToken = (await getAccessToken()) || '';
       }
       if (!accessToken) {
-        throw new Error('Not authenticated with Google. Connect Workspace in the sidebar.');
+        throw new Error('No Google access. Sign in with Google under Connections & APIs.');
       }
 
       const result = await postJson('/api/sheets/rows', { config, rows, accessToken });
