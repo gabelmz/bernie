@@ -27,6 +27,10 @@ import { CustomNode } from './nodes/CustomNode';
 import { FlushNode } from './nodes/FlushNode';
 import { TriggerNode } from './nodes/TriggerNode';
 import { SheetNode } from './nodes/SheetNode';
+import { AsanaNode } from './nodes/AsanaNode';
+import { KeepaNode } from './nodes/KeepaNode';
+import { SupabaseNode } from './nodes/SupabaseNode';
+import { InsightsNode } from './nodes/InsightsNode';
 import { ChatNode } from './nodes/ChatNode';
 import { MeetNode } from './nodes/MeetNode';
 import { SlackNode } from './nodes/SlackNode';
@@ -101,6 +105,10 @@ const nodeTypes = {
   json: JsonCardNode,
   drive: DriveNode,
   sheet: SheetNode,
+  asana: AsanaNode,
+  keepa: KeepaNode,
+  supabase: SupabaseNode,
+  insights: InsightsNode,
   http: HttpNode,
   ai: AiNode,
   text: TextNode,
@@ -820,6 +828,10 @@ export function Canvas() {
                   case 'drive': return '#f97316'; // orange
                   case 'http': return '#10b981'; // emerald
                   case 'ai': return '#a855f7'; // purple
+                  case 'asana': return '#f43f5e'; // rose
+                  case 'keepa': return '#fb923c'; // orange
+                  case 'supabase': return '#10b981'; // emerald
+                  case 'insights': return '#facc15'; // yellow
                   default: return '#27272a';
                 }
               }}

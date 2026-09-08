@@ -1,4 +1,8 @@
 import { Node, Edge } from '@xyflow/react';
+import { parseAsinList, toRows } from './integrationCore';
+
+/** Nodes that write somewhere and therefore need rows arriving on their input. */
+export const SINK_NODE_TYPES = ['supabase', 'sheet', 'insights'] as const;
 
 export interface WorkflowValidationIssue {
   type: 'error' | 'warning' | 'info';
@@ -201,6 +205,37 @@ export function validateWorkflow(nodes: Node[], edges: Edge[]): WorkflowValidati
         });
       }
     }
+
+    // Sinks and the insights node are useless without an upstream producer.
+    if ((SINK_NODE_TYPES as readonly string[]).includes(node.type || '') && incoming.length === 0) {
+      issues.push({
+        type: 'error',
+        nodeId: node.id,
+        message: `"${node.data?.title || node.id}" has no input connection, so it has no rows to work with.`,
+        suggestion: 'Connect a source node such as Asana or Keepa to its input handle.',
+      });
+    }
+
+    if (node.type === 'supabase' && node.data?.mode === 'upsert') {
+      const onConflict = node.data?.onConflict;
+      if (!onConflict || (typeof onConflict === 'string' && !onConflict.trim())) {
+        issues.push({
+          type: 'warning',
+          nodeId: node.id,
+          message: `Supabase Node "${node.data?.title || node.id}" is set to upsert without a conflict column.`,
+          suggestion: 'Set the on-conflict column(s), otherwise Postgres cannot merge duplicates.',
+        });
+      }
+    }
+
+    if (node.type === 'keepa' && incoming.length === 0 && parseAsinList(node.data?.asins as string).length === 0) {
+      issues.push({
+        type: 'info',
+        nodeId: node.id,
+        message: `Keepa Node "${node.data?.title || node.id}" has no ASINs of its own.`,
+        suggestion: 'Enter ASINs on the node, set defaults in Integrations, or feed it a list from an upstream node.',
+      });
+    }
   });
 
   const hasErrors = issues.some((i) => i.type === 'error');
@@ -392,6 +427,69 @@ export function executeNodeSimulation(node: Node, inputData: any): any {
       return {
         triggeredAt: Date.now(),
         source: 'workflow-test-simulation',
+      };
+    }
+    // Integration nodes never hit the network during a dry run. They replay the
+    // rows they last fetched, or stand in a clearly-marked placeholder, so the
+    // downstream shape is realistic without spending API quota.
+    case 'asana': {
+      if (Array.isArray(data.jsonData) && data.jsonData.length > 0) return data.jsonData;
+      return [
+        {
+          gid: 'simulated-task',
+          name: 'Simulated Asana task',
+          completed: false,
+          assignee: null,
+          due_on: null,
+          simulated: true,
+        },
+      ];
+    }
+    case 'keepa': {
+      if (Array.isArray(data.jsonData) && data.jsonData.length > 0) return data.jsonData;
+      const asins = parseAsinList(data.asins as string);
+      const sample = asins.length > 0 ? asins : ['SIMULATED'];
+      return sample.map((asin) => ({
+        asin,
+        title: 'Simulated Keepa product',
+        buy_box_price: null,
+        sales_rank: null,
+        simulated: true,
+      }));
+    }
+    case 'supabase': {
+      const rows = toRows(inputData);
+      return {
+        success: true,
+        simulated: true,
+        table: data.table || '(from Integrations)',
+        mode: data.mode === 'upsert' ? 'upsert' : 'insert',
+        written: rows.length,
+      };
+    }
+    case 'sheet': {
+      const rows = toRows(inputData);
+      return {
+        success: true,
+        simulated: true,
+        spreadsheetId: data.spreadsheetId || '(from Integrations)',
+        sheetName: data.sheetName || 'Sheet1',
+        mode: data.mode === 'overwrite' ? 'overwrite' : 'append',
+        written: rows.length,
+      };
+    }
+    case 'insights': {
+      const rows = toRows(inputData);
+      return {
+        simulated: true,
+        rowCount: rows.length,
+        insights: {
+          headline: `Simulated insight over ${rows.length} row${rows.length === 1 ? '' : 's'}`,
+          summary: 'Dry runs do not call the model. Run the node to generate real insights.',
+          keyFindings: [],
+          anomalies: [],
+          recommendations: [],
+        },
       };
     }
     default:

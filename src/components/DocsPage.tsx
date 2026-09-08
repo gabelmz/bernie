@@ -1,5 +1,5 @@
 import React from 'react';
-import { Book, Code, Box, GitBranch } from 'lucide-react';
+import { Book, Code, Box, GitBranch, Plug } from 'lucide-react';
 
 export function DocsPage({ onClose }: { onClose: () => void }) {
   return (
@@ -41,6 +41,29 @@ export function DocsPage({ onClose }: { onClose: () => void }) {
               Connections between nodes pass data sequentially. You can branch your flows by connecting one output handle to multiple input handles. The engine executes them in parallel (DAG format).
             </p>
           </div>
+        </div>
+
+        <div>
+          <h3 className="font-semibold text-text-main flex items-center gap-2 mb-3">
+            <Plug className="w-4 h-4 text-rose-400" />
+            Integrations: pull, push, analyse
+          </h3>
+          <p className="leading-relaxed mb-4">
+            Credentials and defaults for Asana, Keepa, Supabase and Google Sheets live on the{' '}
+            <strong>Integrations</strong> page (Blocks icon in the left nav). Each integration has a{' '}
+            <strong>Test Connection</strong> button, and every node inherits those defaults whenever its own fields are
+            left blank, so you set a token once and reuse it across the canvas.
+          </p>
+          <ul className="list-disc pl-5 space-y-1 mb-4">
+            <li><strong>Asana Tasks</strong> and <strong>Keepa Products</strong> are sources: they emit normalized rows.</li>
+            <li><strong>Supabase</strong> and <strong>Google Sheets</strong> are sinks: they write the rows they receive.</li>
+            <li><strong>AI Insights</strong> analyses incoming rows and returns findings, anomalies and recommendations.</li>
+          </ul>
+          <p className="leading-relaxed">
+            A typical pipeline is <span className="font-mono text-text-main">Keepa → AI Insights → Supabase</span>, or{' '}
+            <span className="font-mono text-text-main">Asana → Google Sheets</span>. Run a source node and its rows
+            cascade to everything connected downstream.
+          </p>
         </div>
 
         <div>

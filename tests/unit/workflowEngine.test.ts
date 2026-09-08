@@ -292,3 +292,134 @@ describe('Workflow Engine - End-to-End Simulation Pipeline', () => {
     expect(report.errors[0]).toContain('cycles');
   });
 });
+
+describe('Workflow Engine - Integration Node Validation', () => {
+  it('flags sink nodes that have nothing feeding them', () => {
+    const nodes: Node[] = [
+      { id: 'sb', type: 'supabase', position: { x: 0, y: 0 }, data: { title: 'Supabase Sink', table: 'products' } },
+      { id: 'sh', type: 'sheet', position: { x: 100, y: 0 }, data: { title: 'Sheets Sink' } },
+      { id: 'ins', type: 'insights', position: { x: 200, y: 0 }, data: { title: 'Insights' } },
+    ];
+
+    const result = validateWorkflow(nodes, []);
+
+    expect(result.valid).toBe(false);
+    ['sb', 'sh', 'ins'].forEach((id) => {
+      const issue = result.issues.find((i) => i.nodeId === id && i.type === 'error');
+      expect(issue?.message).toContain('no input connection');
+    });
+  });
+
+  it('accepts a connected source to sink pipeline', () => {
+    const nodes: Node[] = [
+      { id: 'asana', type: 'asana', position: { x: 0, y: 0 }, data: { title: 'Asana', projectGid: '123' } },
+      { id: 'sb', type: 'supabase', position: { x: 200, y: 0 }, data: { title: 'Supabase', table: 'tasks' } },
+    ];
+    const edges: Edge[] = [{ id: 'e1', source: 'asana', target: 'sb' }];
+
+    const result = validateWorkflow(nodes, edges);
+
+    expect(result.valid).toBe(true);
+    expect(result.metrics.entryNodes).toBe(1);
+    expect(result.metrics.terminalNodes).toBe(1);
+  });
+
+  it('warns when an upsert has no conflict column to merge on', () => {
+    const nodes: Node[] = [
+      { id: 'src', type: 'json', position: { x: 0, y: 0 }, data: { title: 'Rows' } },
+      { id: 'sb', type: 'supabase', position: { x: 200, y: 0 }, data: { title: 'Supabase', table: 't', mode: 'upsert' } },
+    ];
+    const edges: Edge[] = [{ id: 'e1', source: 'src', target: 'sb' }];
+
+    const warning = validateWorkflow(nodes, edges).issues.find((i) => i.nodeId === 'sb' && i.type === 'warning');
+    expect(warning?.message).toContain('without a conflict column');
+
+    const configured: Node[] = [
+      nodes[0],
+      { ...nodes[1], data: { ...nodes[1].data, onConflict: 'asin' } },
+    ];
+    expect(validateWorkflow(configured, edges).issues.some((i) => i.type === 'warning' && i.nodeId === 'sb')).toBe(false);
+  });
+
+  it('notes a Keepa node with neither ASINs nor an upstream list', () => {
+    const nodes: Node[] = [
+      { id: 'kp', type: 'keepa', position: { x: 0, y: 0 }, data: { title: 'Keepa' } },
+      { id: 'sh', type: 'sheet', position: { x: 200, y: 0 }, data: { title: 'Sheets' } },
+    ];
+    const edges: Edge[] = [{ id: 'e1', source: 'kp', target: 'sh' }];
+
+    const result = validateWorkflow(nodes, edges);
+    expect(result.issues.find((i) => i.nodeId === 'kp')?.type).toBe('info');
+
+    const withAsins: Node[] = [{ ...nodes[0], data: { ...nodes[0].data, asins: 'B01' } }, nodes[1]];
+    expect(validateWorkflow(withAsins, edges).issues.some((i) => i.nodeId === 'kp')).toBe(false);
+  });
+});
+
+describe('Workflow Engine - Integration Node Simulation', () => {
+  it('replays previously fetched Asana rows instead of calling the API', () => {
+    const rows = [{ gid: '1', name: 'Real task' }];
+    const node: Node = { id: 'a', type: 'asana', position: { x: 0, y: 0 }, data: { jsonData: rows } };
+
+    expect(executeNodeSimulation(node, undefined)).toEqual(rows);
+  });
+
+  it('marks stand-in Asana output as simulated when nothing was fetched yet', () => {
+    const node: Node = { id: 'a', type: 'asana', position: { x: 0, y: 0 }, data: {} };
+    const output = executeNodeSimulation(node, undefined);
+
+    expect(Array.isArray(output)).toBe(true);
+    expect(output[0].simulated).toBe(true);
+  });
+
+  it('produces one simulated Keepa row per configured ASIN', () => {
+    const node: Node = { id: 'k', type: 'keepa', position: { x: 0, y: 0 }, data: { asins: 'B01, B02' } };
+    const output = executeNodeSimulation(node, undefined);
+
+    expect(output.map((row: any) => row.asin)).toEqual(['B01', 'B02']);
+    expect(output.every((row: any) => row.simulated)).toBe(true);
+    // Prices must stay null in a dry run rather than defaulting to zero.
+    expect(output[0].buy_box_price).toBeNull();
+  });
+
+  it('counts the rows a sink would have written without writing them', () => {
+    const input = [{ asin: 'A1' }, { asin: 'A2' }];
+
+    const supabase = executeNodeSimulation(
+      { id: 's', type: 'supabase', position: { x: 0, y: 0 }, data: { table: 'products', mode: 'upsert' } },
+      input
+    );
+    expect(supabase).toMatchObject({ simulated: true, table: 'products', mode: 'upsert', written: 2 });
+
+    const sheet = executeNodeSimulation(
+      { id: 'sh', type: 'sheet', position: { x: 0, y: 0 }, data: { spreadsheetId: 'abc', sheetName: 'Tasks' } },
+      input
+    );
+    expect(sheet).toMatchObject({ simulated: true, sheetName: 'Tasks', mode: 'append', written: 2 });
+  });
+
+  it('returns a clearly simulated insight shape for dry runs', () => {
+    const output = executeNodeSimulation(
+      { id: 'i', type: 'insights', position: { x: 0, y: 0 }, data: {} },
+      [{ a: 1 }, { a: 2 }, { a: 3 }]
+    );
+
+    expect(output.simulated).toBe(true);
+    expect(output.rowCount).toBe(3);
+    expect(output.insights.headline).toContain('3 rows');
+  });
+
+  it('runs a full Asana to Supabase pipeline in simulation', () => {
+    const nodes: Node[] = [
+      { id: 'asana', type: 'asana', position: { x: 0, y: 0 }, data: { title: 'Asana', jsonData: [{ gid: '1' }, { gid: '2' }] } },
+      { id: 'sb', type: 'supabase', position: { x: 200, y: 0 }, data: { title: 'Supabase', table: 'tasks' } },
+    ];
+    const edges: Edge[] = [{ id: 'e1', source: 'asana', target: 'sb' }];
+
+    const report = simulateWorkflowExecution(nodes, edges);
+
+    expect(report.success).toBe(true);
+    expect(report.steps).toHaveLength(2);
+    expect(report.steps[1].output).toMatchObject({ written: 2, table: 'tasks' });
+  });
+});

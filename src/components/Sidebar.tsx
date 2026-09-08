@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { initAuth } from '../lib/firebase';
-import { Database, Code2, Globe, Sparkles, FileText, Type, Terminal, Box, Trash2, Play , PanelRightClose, PanelRightOpen, ChevronRight, ChevronLeft, MessageCircle, Video } from 'lucide-react';
+import { Database, Code2, Globe, Sparkles, FileText, Type, Terminal, Box, Trash2, Play , PanelRightClose, PanelRightOpen, ChevronRight, ChevronLeft, MessageCircle, Video, CheckCircle2, Package, Lightbulb, Table } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 interface SidebarProps {
@@ -66,7 +66,11 @@ export function Sidebar({ onAddNode }: SidebarProps) {
     { type: 'ai', title: 'AI Agent', desc: 'Execute LLM prompt', data: { title: 'AI Logic', prompt: 'Analyze this data and identify automation opportunities.' }, Icon: Sparkles, iconColor: 'text-purple-400', bgClass: 'bg-purple-400/10' },
     { type: 'custom', title: 'Custom Tool', desc: 'Integration hook', data: { title: 'Custom Tool' }, Icon: Box, iconColor: 'text-pink-400', bgClass: 'bg-pink-400/10' },
     { type: 'flush', title: 'Data Sink', desc: 'Terminates flow data', data: { title: 'Data Sink' }, Icon: Trash2, iconColor: 'text-red-400', bgClass: 'bg-red-400/10' },
-    { type: 'sheet', title: 'Google Sheets', desc: 'Export data', data: { title: 'Google Sheets', sheetName: 'Sheet1' }, Icon: Box, iconColor: 'text-green-500', bgClass: 'bg-green-500/10' },
+    { type: 'asana', title: 'Asana Tasks', desc: 'Pull tasks from a project', data: { title: 'Asana Tasks' }, Icon: CheckCircle2, iconColor: 'text-rose-500', bgClass: 'bg-rose-500/10' },
+    { type: 'keepa', title: 'Keepa Products', desc: 'Pull Amazon product data', data: { title: 'Keepa Products' }, Icon: Package, iconColor: 'text-orange-400', bgClass: 'bg-orange-400/10' },
+    { type: 'supabase', title: 'Supabase', desc: 'Push rows to Postgres', data: { title: 'Supabase' }, Icon: Database, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
+    { type: 'sheet', title: 'Google Sheets', desc: 'Push rows to a sheet', data: { title: 'Google Sheets' }, Icon: Table, iconColor: 'text-green-500', bgClass: 'bg-green-500/10' },
+    { type: 'insights', title: 'AI Insights', desc: 'Analyse rows with AI', data: { title: 'AI Insights' }, Icon: Lightbulb, iconColor: 'text-yellow-400', bgClass: 'bg-yellow-400/10' },
     { type: 'chat', title: 'Google Chat', desc: 'Send messages', data: { title: 'Google Chat' }, Icon: MessageCircle, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
     { type: 'meet', title: 'Google Meet', desc: 'Create meetings', data: { title: 'Google Meet' }, Icon: Video, iconColor: 'text-blue-500', bgClass: 'bg-blue-500/10' },
   ];

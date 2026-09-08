@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Type, Code2, Terminal, Globe, Sparkles, Box, Trash2, MessageCircle, Video, Database, Plus, Puzzle, FileText, Blocks, Search } from 'lucide-react';
+import { Play, Type, Code2, Terminal, Globe, Sparkles, Box, Trash2, MessageCircle, Video, Database, Plus, Puzzle, FileText, Blocks, Search, CheckCircle2, Package, Lightbulb, Table } from 'lucide-react';
 
 interface NodeGalleryPageProps {
   onClose: () => void;
@@ -15,7 +15,11 @@ const defaultNodes = [
   { type: 'ai', title: 'AI Agent', desc: 'Execute LLM prompt', Icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-400/10' },
   { type: 'custom', title: 'Custom Tool', desc: 'Integration hook', Icon: Box, color: 'text-pink-400', bg: 'bg-pink-400/10' },
   { type: 'flush', title: 'Data Sink', desc: 'Terminates flow data', Icon: Trash2, color: 'text-red-400', bg: 'bg-red-400/10' },
-  { type: 'sheet', title: 'Google Sheets', desc: 'Export data', Icon: Box, color: 'text-green-500', bg: 'bg-green-500/10' },
+  { type: 'asana', title: 'Asana Tasks', desc: 'Pull tasks from a project', Icon: CheckCircle2, color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { type: 'keepa', title: 'Keepa Products', desc: 'Pull Amazon product data', Icon: Package, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+  { type: 'supabase', title: 'Supabase', desc: 'Push rows to Postgres', Icon: Database, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { type: 'sheet', title: 'Google Sheets', desc: 'Push rows to a sheet', Icon: Table, color: 'text-green-500', bg: 'bg-green-500/10' },
+  { type: 'insights', title: 'AI Insights', desc: 'Analyse rows with AI', Icon: Lightbulb, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
   { type: 'chat', title: 'Google Chat', desc: 'Send messages', Icon: MessageCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
   { type: 'meet', title: 'Google Meet', desc: 'Create meetings', Icon: Video, color: 'text-blue-500', bg: 'bg-blue-500/10' },
   { type: 'slack', title: 'Slack', desc: 'Send notifications', Icon: MessageCircle, color: 'text-purple-500', bg: 'bg-purple-500/10' },

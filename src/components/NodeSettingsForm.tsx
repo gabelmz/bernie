@@ -1,5 +1,6 @@
 import React from 'react';
 import { useReactFlow, Node } from '@xyflow/react';
+import { KEEPA_DOMAINS } from '../lib/integrationCore';
 
 interface NodeSettingsFormProps {
   node: Node;
@@ -48,6 +49,55 @@ export function NodeSettingsForm({ node }: NodeSettingsFormProps) {
       </div>
     );
   };
+
+  const renderSelect = (
+    label: string,
+    key: string,
+    options: { value: string | number; label: string }[],
+    help?: string
+  ) => (
+    <div className="flex flex-col gap-1.5 mb-4">
+      <label className="text-[11px] font-semibold text-text-muted uppercase tracking-widest">{label}</label>
+      <select
+        value={data[key] ?? ''}
+        onChange={(e) => {
+          const raw = e.target.value;
+          const asNumber = Number(raw);
+          handleChange(key, raw !== '' && !isNaN(asNumber) ? asNumber : raw);
+        }}
+        className="w-full bg-surface border border-border/50 rounded px-3 py-2 text-[13px] text-text-main outline-none focus:border-accent"
+      >
+        <option value="">Inherit from Integrations</option>
+        {options.map((option) => (
+          <option key={String(option.value)} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {help && <p className="text-[11px] text-text-muted">{help}</p>}
+    </div>
+  );
+
+  const renderCheckbox = (label: string, key: string, help?: string) => (
+    <div className="flex flex-col gap-1.5 mb-4">
+      <label className="flex items-center gap-2 text-[13px] text-text-main cursor-pointer">
+        <input
+          type="checkbox"
+          checked={Boolean(data[key])}
+          onChange={(e) => handleChange(key, e.target.checked)}
+          className="accent-accent"
+        />
+        {label}
+      </label>
+      {help && <p className="text-[11px] text-text-muted">{help}</p>}
+    </div>
+  );
+
+  const renderInheritNote = (integration: string) => (
+    <p className="text-[11px] text-text-muted leading-relaxed mb-4 bg-surface/50 border border-border/50 rounded p-2">
+      Blank fields fall back to the {integration} defaults saved on the Integrations page.
+    </p>
+  );
 
   const renderCommonFields = () => (
     <div className="bg-surface/50 border border-border/50 rounded-xl p-4 mb-5 space-y-4">
@@ -143,8 +193,54 @@ export function NodeSettingsForm({ node }: NodeSettingsFormProps) {
       case 'sheet':
         return (
           <div className="flex flex-col">
+            {renderInheritNote('Google Sheets')}
             {renderField('Spreadsheet ID', 'spreadsheetId', 'text', '1BxiMvs0XRYFgCE_...')}
             {renderField('Sheet Name', 'sheetName', 'text', 'Sheet1')}
+            {renderSelect('Write Mode', 'mode', [
+              { value: 'append', label: 'Append rows' },
+              { value: 'overwrite', label: 'Overwrite from A1' },
+            ])}
+            {renderCheckbox('Write a header row', 'includeHeaders')}
+          </div>
+        );
+      case 'asana':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('Asana')}
+            {renderField('Project GID', 'projectGid', 'text', '1200000000000001')}
+            {renderField('Workspace GID', 'workspaceGid', 'text', '1200000000000000')}
+            {renderField('Assignee GID', 'assigneeGid', 'text', 'me')}
+            {renderCheckbox('Include completed tasks', 'includeCompleted')}
+            {renderField('Page Size', 'limit', 'number', '100')}
+          </div>
+        );
+      case 'keepa':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('Keepa')}
+            {renderField('ASINs', 'asins', 'textarea', 'B08N5WRWNW, B07FZ8S74R')}
+            {renderSelect('Marketplace', 'domain', KEEPA_DOMAINS)}
+            {renderField('Stats Window (days)', 'statsDays', 'number', '30')}
+          </div>
+        );
+      case 'supabase':
+        return (
+          <div className="flex flex-col">
+            {renderInheritNote('Supabase')}
+            {renderField('Table', 'table', 'text', 'products')}
+            {renderSelect('Write Mode', 'mode', [
+              { value: 'insert', label: 'Insert' },
+              { value: 'upsert', label: 'Upsert (merge duplicates)' },
+            ])}
+            {renderField('On Conflict Column(s)', 'onConflict', 'text', 'asin')}
+          </div>
+        );
+      case 'insights':
+        return (
+          <div className="flex flex-col">
+            {renderField('Analysis Focus', 'focus', 'textarea', 'Flag pricing outliers and stalled tasks')}
+            {renderField('Sample Size (rows sent to the model)', 'sampleSize', 'number', '40')}
+            {renderField('Model', 'model', 'text', 'gemini-3.1-pro-preview')}
           </div>
         );
       case 'slack':
