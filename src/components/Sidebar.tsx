@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthUser, initAuth } from '../lib/auth';
-import { Database, Code2, Globe, Sparkles, FileText, Type, Terminal, Box, Trash2, Play , PanelRightClose, PanelRightOpen, ChevronRight, ChevronLeft, MessageCircle, Video, CheckCircle2, Package, Lightbulb, Table, Shuffle, Bot, Plug } from 'lucide-react';
+import { Database, Code2, Globe, Sparkles, FileText, Type, Terminal, Box, Trash2, Play , PanelRightClose, PanelRightOpen, ChevronRight, ChevronLeft, MessageCircle, Video, CheckCircle2, Package, Lightbulb, Table, Shuffle, Bot, Plug, FolderOpen, Github } from 'lucide-react';
 
 interface SidebarProps {
   onAddNode?: (type: string, data?: any) => void;
@@ -67,15 +67,19 @@ export function Sidebar({ onAddNode }: SidebarProps) {
     { type: 'ai', title: 'AI Agent', desc: 'Execute LLM prompt', data: { title: 'AI Logic', prompt: 'Analyze this data and identify automation opportunities.' }, Icon: Sparkles, iconColor: 'text-purple-400', bgClass: 'bg-purple-400/10' },
     { type: 'custom', title: 'Custom Tool', desc: 'Integration hook', data: { title: 'Custom Tool' }, Icon: Box, iconColor: 'text-pink-400', bgClass: 'bg-pink-400/10' },
     { type: 'flush', title: 'Data Sink', desc: 'Terminates flow data', data: { title: 'Data Sink' }, Icon: Trash2, iconColor: 'text-red-400', bgClass: 'bg-red-400/10' },
-    { type: 'asana', title: 'Asana Tasks', desc: 'Pull tasks from a project', data: { title: 'Asana Tasks' }, Icon: CheckCircle2, iconColor: 'text-rose-500', bgClass: 'bg-rose-500/10' },
-    { type: 'keepa', title: 'Keepa Products', desc: 'Pull Amazon product data', data: { title: 'Keepa Products' }, Icon: Package, iconColor: 'text-orange-400', bgClass: 'bg-orange-400/10' },
-    { type: 'supabase', title: 'Supabase', desc: 'Push rows to Postgres', data: { title: 'Supabase' }, Icon: Database, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
-    { type: 'sheet', title: 'Google Sheets', desc: 'Push rows to a sheet', data: { title: 'Google Sheets' }, Icon: Table, iconColor: 'text-green-500', bgClass: 'bg-green-500/10' },
+    { type: 'asana', title: 'Asana', desc: 'Tasks, projects, comments', data: { title: 'Asana' }, Icon: CheckCircle2, iconColor: 'text-rose-500', bgClass: 'bg-rose-500/10' },
+    { type: 'keepa', title: 'Keepa', desc: 'Products, deals, best sellers', data: { title: 'Keepa' }, Icon: Package, iconColor: 'text-orange-400', bgClass: 'bg-orange-400/10' },
+    { type: 'drive', title: 'Google Drive', desc: 'List, pull and push files', data: { title: 'Google Drive' }, Icon: FolderOpen, iconColor: 'text-amber-400', bgClass: 'bg-amber-400/10' },
+    { type: 'supabase', title: 'Supabase', desc: 'Pull, push, update, RPC', data: { title: 'Supabase' }, Icon: Database, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
+    { type: 'sheet', title: 'Google Sheets', desc: 'Pull, push and preview rows', data: { title: 'Google Sheets' }, Icon: Table, iconColor: 'text-green-500', bgClass: 'bg-green-500/10' },
+    { type: 'github', title: 'GitHub', desc: 'Issues, PRs, files', data: { title: 'GitHub' }, Icon: Github, iconColor: 'text-text-main', bgClass: 'bg-text-main/10' },
     { type: 'insights', title: 'AI Insights', desc: 'Analyse rows with AI', data: { title: 'AI Insights' }, Icon: Lightbulb, iconColor: 'text-yellow-400', bgClass: 'bg-yellow-400/10' },
+    { type: 'gemini', title: 'Gemini', desc: 'Generate or analyse', data: { title: 'Gemini' }, Icon: Sparkles, iconColor: 'text-purple-400', bgClass: 'bg-purple-400/10' },
     { type: 'openrouter', title: 'OpenRouter', desc: 'Prompt a hosted model', data: { title: 'OpenRouter' }, Icon: Shuffle, iconColor: 'text-indigo-400', bgClass: 'bg-indigo-400/10' },
     { type: 'huggingface', title: 'Hugging Face', desc: 'Run model inference', data: { title: 'Hugging Face' }, Icon: Bot, iconColor: 'text-yellow-400', bgClass: 'bg-yellow-400/10' },
     { type: 'opencode', title: 'opencode', desc: 'Prompt an opencode server', data: { title: 'opencode' }, Icon: Terminal, iconColor: 'text-cyan-400', bgClass: 'bg-cyan-400/10' },
-    { type: 'mcp', title: 'MCP Tools', desc: 'List or call MCP tools', data: { title: 'MCP Server' }, Icon: Plug, iconColor: 'text-blue-400', bgClass: 'bg-blue-400/10' },
+    { type: 'mcp', title: 'MCP Tools', desc: 'List and call MCP tools', data: { title: 'MCP Server' }, Icon: Plug, iconColor: 'text-blue-400', bgClass: 'bg-blue-400/10' },
+    { type: 'apphttp', title: 'Custom HTTP', desc: 'Any saved API endpoint', data: { title: 'Custom HTTP' }, Icon: Globe, iconColor: 'text-emerald-400', bgClass: 'bg-emerald-400/10' },
     { type: 'chat', title: 'Google Chat', desc: 'Send messages', data: { title: 'Google Chat' }, Icon: MessageCircle, iconColor: 'text-emerald-500', bgClass: 'bg-emerald-500/10' },
     { type: 'meet', title: 'Google Meet', desc: 'Create meetings', data: { title: 'Google Meet' }, Icon: Video, iconColor: 'text-blue-500', bgClass: 'bg-blue-500/10' },
   ];

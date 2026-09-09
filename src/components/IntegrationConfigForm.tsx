@@ -7,7 +7,9 @@ import {
   validateIntegrationConfig,
 } from '../lib/integrationCore';
 import { postJson } from '../lib/nodeApi';
-import { getAccessToken } from '../lib/auth';
+import { getAccessToken, hasGoogleAccess } from '../lib/auth';
+import { CompanionCodePanel } from './CompanionCodePanel';
+import { companionTargetsFor } from '../lib/companionCode';
 
 interface IntegrationConfigFormProps {
   id: IntegrationId;
@@ -26,6 +28,9 @@ export function IntegrationConfigForm({ id, config, onChange, onSave }: Integrat
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const { valid, missing } = validateIntegrationConfig(id, config);
+  const companionTargets = companionTargetsFor(id);
+  const needsGoogle = Boolean(schema.requiresGoogleAuth) || id === 'drive';
+  const googleReady = hasGoogleAccess();
 
   const setField = (key: string, value: any) => {
     setTestResult(null);
@@ -153,6 +158,27 @@ export function IntegrationConfigForm({ id, config, onChange, onSave }: Integrat
           </button>
         )}
       </div>
+
+      {companionTargets.length > 0 && (
+        <>
+          {needsGoogle && !googleReady && (
+            <div className="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg p-2.5">
+              Google is not connected, so this integration cannot call Google directly. Deploy the companion code below
+              and Bernie reaches your data through it instead.
+            </div>
+          )}
+          <CompanionCodePanel
+            integration={id}
+            options={{
+              spreadsheetId: config.spreadsheetId,
+              sheetName: config.sheetName,
+              folderId: config.folderId,
+              table: config.table,
+              onConflict: config.onConflict,
+            }}
+          />
+        </>
+      )}
 
       {testResult && (
         <div

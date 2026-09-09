@@ -1,6 +1,8 @@
 import React from 'react';
 import { useReactFlow, Node } from '@xyflow/react';
 import { KEEPA_DOMAINS } from '../lib/integrationCore';
+import { NodeOperationForm } from './NodeOperationForm';
+import { APP_NODE_STYLES } from './nodes/appNodes';
 
 interface NodeSettingsFormProps {
   node: Node;
@@ -437,15 +439,20 @@ export function NodeSettingsForm({ node }: NodeSettingsFormProps) {
     }
   };
 
+  const appStyle = APP_NODE_STYLES[node.type || ''];
+
   return (
     <div className="flex flex-col">
       {renderCommonFields()}
-      <div className="bg-surface/30 border border-border/50 rounded-xl p-4">
-        <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-3">
-          Node Configuration
-        </h4>
-        {renderTypeSpecific()}
-      </div>
+      {appStyle && <NodeOperationForm node={node} integration={appStyle.integration} />}
+      {!appStyle && (
+        <div className="bg-surface/30 border border-border/50 rounded-xl p-4">
+          <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-3">
+            Node Configuration
+          </h4>
+          {renderTypeSpecific()}
+        </div>
+      )}
     </div>
   );
 }

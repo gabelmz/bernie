@@ -144,6 +144,21 @@ export interface CompletionNodeData extends BaseNodeData {
   sessionId?: string;
 }
 
+/**
+ * Data for an app-scoped node: which operation it runs, that operation's
+ * parameters, and any credentials dropped on this node specifically.
+ */
+export interface AppNodeData extends BaseNodeData {
+  /** Operation id from the registry, e.g. "tasks.list". */
+  operation?: string;
+  /** Parameters for the selected operation. */
+  params?: Record<string, any>;
+  /** Secrets scoped to this node, overriding the saved connection. */
+  credentials?: Record<string, string>;
+  lastRunMeta?: any;
+  lastRunCount?: number;
+}
+
 /** Tool node: lists or calls the tools an MCP server exposes. */
 export interface McpNodeData extends BaseNodeData {
   tool?: string;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Type, Code2, Terminal, Globe, Sparkles, Box, Trash2, MessageCircle, Video, Database, Plus, Puzzle, FileText, Blocks, Search, CheckCircle2, Package, Lightbulb, Table, Shuffle, Bot, Plug } from 'lucide-react';
+import { Play, Type, Code2, Terminal, Globe, Sparkles, Box, Trash2, MessageCircle, Video, Database, Plus, Puzzle, FileText, Blocks, Search, CheckCircle2, Package, Lightbulb, Table, Shuffle, Bot, Plug, FolderOpen, Github } from 'lucide-react';
 
 interface NodeGalleryPageProps {
   onClose: () => void;
@@ -15,19 +15,22 @@ const defaultNodes = [
   { type: 'ai', title: 'AI Agent', desc: 'Execute LLM prompt', Icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-400/10' },
   { type: 'custom', title: 'Custom Tool', desc: 'Integration hook', Icon: Box, color: 'text-pink-400', bg: 'bg-pink-400/10' },
   { type: 'flush', title: 'Data Sink', desc: 'Terminates flow data', Icon: Trash2, color: 'text-red-400', bg: 'bg-red-400/10' },
-  { type: 'asana', title: 'Asana Tasks', desc: 'Pull tasks from a project', Icon: CheckCircle2, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  { type: 'keepa', title: 'Keepa Products', desc: 'Pull Amazon product data', Icon: Package, color: 'text-orange-400', bg: 'bg-orange-400/10' },
-  { type: 'supabase', title: 'Supabase', desc: 'Push rows to Postgres', Icon: Database, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { type: 'sheet', title: 'Google Sheets', desc: 'Push rows to a sheet', Icon: Table, color: 'text-green-500', bg: 'bg-green-500/10' },
+  { type: 'asana', title: 'Asana', desc: 'Tasks, projects, comments', Icon: CheckCircle2, color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { type: 'keepa', title: 'Keepa', desc: 'Products, deals, best sellers', Icon: Package, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+  { type: 'drive', title: 'Google Drive', desc: 'List, pull and push files', Icon: FolderOpen, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+  { type: 'supabase', title: 'Supabase', desc: 'Pull, push, update, RPC', Icon: Database, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { type: 'sheet', title: 'Google Sheets', desc: 'Pull, push and preview rows', Icon: Table, color: 'text-green-500', bg: 'bg-green-500/10' },
+  { type: 'github', title: 'GitHub', desc: 'Issues, PRs, files', Icon: Github, color: 'text-text-main', bg: 'bg-text-main/10' },
   { type: 'insights', title: 'AI Insights', desc: 'Analyse rows with AI', Icon: Lightbulb, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+  { type: 'gemini', title: 'Gemini', desc: 'Generate or analyse', Icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-400/10' },
   { type: 'openrouter', title: 'OpenRouter', desc: 'Prompt a hosted model', Icon: Shuffle, color: 'text-indigo-400', bg: 'bg-indigo-400/10' },
   { type: 'huggingface', title: 'Hugging Face', desc: 'Run model inference', Icon: Bot, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
   { type: 'opencode', title: 'opencode', desc: 'Prompt an opencode server', Icon: Terminal, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
-  { type: 'mcp', title: 'MCP Tools', desc: 'List or call MCP tools', Icon: Plug, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+  { type: 'mcp', title: 'MCP Tools', desc: 'List and call MCP tools', Icon: Plug, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+  { type: 'apphttp', title: 'Custom HTTP', desc: 'Any saved API endpoint', Icon: Globe, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
   { type: 'chat', title: 'Google Chat', desc: 'Send messages', Icon: MessageCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
   { type: 'meet', title: 'Google Meet', desc: 'Create meetings', Icon: Video, color: 'text-blue-500', bg: 'bg-blue-500/10' },
   { type: 'slack', title: 'Slack', desc: 'Send notifications', Icon: MessageCircle, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { type: 'github', title: 'GitHub', desc: 'Manage repositories', Icon: Box, color: 'text-gray-500', bg: 'bg-gray-500/10' },
   { type: 'notion', title: 'Notion', desc: 'Create pages', Icon: FileText, color: 'text-stone-500', bg: 'bg-stone-500/10' },
   { type: 'stripe', title: 'Stripe', desc: 'Process payments', Icon: Box, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
   { type: 'database', title: 'Database', desc: 'SQL / NoSQL', Icon: Database, color: 'text-blue-500', bg: 'bg-blue-500/10' },

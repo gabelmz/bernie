@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useReactFlow } from '@xyflow/react';
+import { useNodesData, useReactFlow } from '@xyflow/react';
 import { X, Code, LayoutTemplate } from 'lucide-react';
 import { JsonEditor } from './nodes/JsonEditor';
 import { NodeSettingsForm } from './NodeSettingsForm';
@@ -13,7 +13,12 @@ export function NodeEditorPane({ nodeId, onClose }: NodeEditorPaneProps) {
   const { getNode } = useReactFlow();
   const [viewMode, setViewMode] = useState<'form' | 'json'>('form');
 
-  const node = nodeId ? getNode(nodeId) : null;
+  // Subscribe to the node's data rather than reading it once: the form edits
+  // that data, so a snapshot would leave the pane showing stale fields after
+  // changing the operation or dropping in a key.
+  const liveData = useNodesData(nodeId ?? '');
+  const base = nodeId ? getNode(nodeId) : null;
+  const node = base && liveData ? { ...base, data: liveData.data } : base;
 
   if (!nodeId || !node) return null;
 

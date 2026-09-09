@@ -4,7 +4,6 @@ import React from 'react';
 import { MathNode } from '@/components/nodes/MathNode';
 import { ScriptNode } from '@/components/nodes/ScriptNode';
 import { TextNode } from '@/components/nodes/TextNode';
-import { DriveNode } from '@/components/nodes/DriveNode';
 
 // Mock handles and XYFlow hooks
 vi.mock('@xyflow/react', () => ({
@@ -80,16 +79,4 @@ describe('Node Components Integration', () => {
     expect(screen.getByText('Workflow executed successfully.')).toBeInTheDocument();
   });
 
-  it('renders DriveNode without throwing unhandled exceptions when Google Picker is absent', () => {
-    const data = {
-      title: 'Google Drive File',
-      fileId: 'file-12345',
-    };
-
-    expect(() => {
-      render(<DriveNode id="drive-1" type="drive" data={data} {...({} as any)} />);
-    }).not.toThrow();
-
-    expect(screen.getByText('Google Drive File')).toBeInTheDocument();
-  });
 });

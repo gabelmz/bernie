@@ -18,7 +18,20 @@ import {
 import { nanoid } from 'nanoid';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { JsonCardNode } from './nodes/JsonCardNode';
-import { DriveNode } from './nodes/DriveNode';
+import {
+  AsanaAppNode,
+  DriveAppNode,
+  GeminiAppNode,
+  GithubAppNode,
+  HttpAppNode,
+  HuggingFaceAppNode,
+  KeepaAppNode,
+  McpAppNode,
+  OpenRouterAppNode,
+  OpencodeAppNode,
+  SheetsAppNode,
+  SupabaseAppNode,
+} from './nodes/appNodes';
 import { HttpNode } from './nodes/HttpNode';
 import { AiNode } from './nodes/AiNode';
 import { TextNode } from './nodes/TextNode';
@@ -26,19 +39,10 @@ import { ScriptNode } from './nodes/ScriptNode';
 import { CustomNode } from './nodes/CustomNode';
 import { FlushNode } from './nodes/FlushNode';
 import { TriggerNode } from './nodes/TriggerNode';
-import { SheetNode } from './nodes/SheetNode';
-import { AsanaNode } from './nodes/AsanaNode';
-import { KeepaNode } from './nodes/KeepaNode';
-import { SupabaseNode } from './nodes/SupabaseNode';
 import { InsightsNode } from './nodes/InsightsNode';
-import { OpenRouterNode } from './nodes/OpenRouterNode';
-import { HuggingFaceNode } from './nodes/HuggingFaceNode';
-import { OpencodeNode } from './nodes/OpencodeNode';
-import { McpNode } from './nodes/McpNode';
 import { ChatNode } from './nodes/ChatNode';
 import { MeetNode } from './nodes/MeetNode';
 import { SlackNode } from './nodes/SlackNode';
-import { GithubNode } from './nodes/GithubNode';
 import { NotionNode } from './nodes/NotionNode';
 import { StripeNode } from './nodes/StripeNode';
 import { WeatherNode } from './nodes/WeatherNode';
@@ -107,16 +111,18 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
 
 const nodeTypes = {
   json: JsonCardNode,
-  drive: DriveNode,
-  sheet: SheetNode,
-  asana: AsanaNode,
-  keepa: KeepaNode,
-  supabase: SupabaseNode,
+  drive: DriveAppNode,
+  sheet: SheetsAppNode,
+  asana: AsanaAppNode,
+  keepa: KeepaAppNode,
+  supabase: SupabaseAppNode,
   insights: InsightsNode,
-  openrouter: OpenRouterNode,
-  huggingface: HuggingFaceNode,
-  opencode: OpencodeNode,
-  mcp: McpNode,
+  openrouter: OpenRouterAppNode,
+  huggingface: HuggingFaceAppNode,
+  opencode: OpencodeAppNode,
+  mcp: McpAppNode,
+  gemini: GeminiAppNode,
+  apphttp: HttpAppNode,
   http: HttpNode,
   ai: AiNode,
   text: TextNode,
@@ -127,7 +133,7 @@ const nodeTypes = {
   chat: ChatNode,
   meet: MeetNode,
   slack: SlackNode,
-  github: GithubNode,
+  github: GithubAppNode,
   notion: NotionNode,
   stripe: StripeNode,
   weather: WeatherNode,
@@ -289,6 +295,24 @@ export function Canvas() {
     // Just trigger the start node's targets
     handleNodeDataUpdate(startNodeId, { triggeredAt: Date.now() });
   }, [handleNodeDataUpdate]);
+
+  // Callbacks cannot be serialized, so nodes restored from autosave come back
+  // without them and could not pass their output downstream. Re-attach them
+  // once, after a load, to whichever nodes are missing them.
+  useEffect(() => {
+    if (!isLoaded) return;
+    setNodes((nds) => {
+      let changed = false;
+      const next = nds.map((node) => {
+        if (typeof node.data?.onDataFetched === 'function' && typeof node.data?.runWorkflow === 'function') {
+          return node;
+        }
+        changed = true;
+        return { ...node, data: { ...node.data, onDataFetched: handleNodeDataUpdate, runWorkflow } };
+      });
+      return changed ? next : nds;
+    });
+  }, [isLoaded, handleNodeDataUpdate, runWorkflow, setNodes]);
 
   const onAddNode = useCallback((type: string, data: any = {}, position?: { x: number, y: number }) => {
     takeSnapshot();
@@ -844,6 +868,8 @@ export function Canvas() {
                   case 'huggingface': return '#facc15'; // yellow
                   case 'opencode': return '#22d3ee'; // cyan
                   case 'mcp': return '#60a5fa'; // blue
+                  case 'gemini': return '#a855f7'; // purple
+                  case 'apphttp': return '#34d399'; // emerald
                   default: return '#27272a';
                 }
               }}

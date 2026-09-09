@@ -175,8 +175,10 @@ import {
 } from "./src/server/integrationKit";
 import { buildMcpRequest, mcpInitializeParams, parseMcpResponseBody } from "./src/lib/providerRequests";
 import { registerProviderRoutes } from "./src/server/providerRoutes";
+import { registerExecuteRoute } from "./src/server/executeRoute";
 
 registerProviderRoutes(app);
+registerExecuteRoute(app);
 
 app.post("/api/asana/tasks", async (req, res) => {
   const config = mergedConfig<AsanaConfig>("asana", req.body?.config);
