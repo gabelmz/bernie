@@ -38,7 +38,34 @@ export const defaultTheme: ThemePreset = {
   depth: 'elevated'
 };
 
+/**
+ * Solarized Light, pulled off its cream base3 (#fdf6e3) toward eggshell so the
+ * canvas reads as warm off-white rather than yellow paper. Cards stay near
+ * white so they lift off it; the accents are Solarized's own.
+ */
+export const solarizedLightTheme: ThemePreset = {
+  background: {
+    primary: '#f5f1e8',
+    secondary: '#fffdf7'
+  },
+  gradient: {
+    primary: 'none',
+    secondary: 'none'
+  },
+  surface: '#ece7da',
+  // Darker than Solarized base01 so the 'muted' step derived from it still
+  // clears 4.5:1 on the near-white cards.
+  text: '#42545a',
+  transparency: '100',
+  density: 'comfortable',
+  edges: 'rounded',
+  highlight: '#268bd2',
+  brightness: '100',
+  depth: 'shadow'
+};
+
 export const themePresets: Record<string, { name: string; theme: ThemePreset }> = {
+  solarizedLight: { name: 'Solarized Light', theme: solarizedLightTheme },
   default: { name: 'Dark Default', theme: defaultTheme },
   light: {
     name: 'Clean Light',
@@ -267,6 +294,19 @@ export const themePresets: Record<string, { name: string; theme: ThemePreset }> 
   }
 };
 
+/** Relative luminance, so a theme declares itself light or dark rather than being listed. */
+function isLight(color: string): boolean {
+  const hex = color.trim().replace('#', '');
+  if (hex.length !== 6) return false;
+
+  const channel = (offset: number) => {
+    const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4) > 0.4;
+}
+
 interface ThemeContextType {
   theme: ThemePreset;
   setTheme: React.Dispatch<React.SetStateAction<ThemePreset>>;
@@ -277,13 +317,16 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemePreset>(() => {
     const saved = localStorage.getItem('stitch-theme-v2');
-    return saved ? JSON.parse(saved) : defaultTheme;
+    return saved ? JSON.parse(saved) : solarizedLightTheme;
   });
 
   useEffect(() => {
     localStorage.setItem('stitch-theme-v2', JSON.stringify(theme));
     
     const root = document.documentElement;
+    // Status panels are painted with dark-first tints. index.css re-tones them
+    // for light backgrounds, and needs to be told which it is looking at.
+    root.dataset.themeMode = isLight(theme.background.primary) ? 'light' : 'dark';
     root.style.setProperty('--theme-bg-primary', theme.background.primary);
     root.style.setProperty('--theme-bg-secondary', theme.background.secondary);
     
@@ -293,6 +336,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--theme-surface', theme.surface);
     root.style.setProperty('--theme-text', theme.text);
     root.style.setProperty('--theme-highlight', theme.highlight);
+
+    // index.css can only carry one literal, which was the dark theme's. Derive
+    // these instead, or every light preset draws charcoal borders and an
+    // indigo hover that belongs to a theme it is not using.
+    root.style.setProperty(
+      '--theme-border',
+      `color-mix(in srgb, ${theme.text} 14%, ${theme.background.secondary})`
+    );
+    root.style.setProperty(
+      '--theme-highlight-hover',
+      `color-mix(in srgb, ${theme.highlight} 84%, #000)`
+    );
     
     const trans = 100 - Number(theme.transparency || '100');
     root.style.setProperty('--theme-trans-percent', `${trans}%`);

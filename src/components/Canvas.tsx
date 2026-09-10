@@ -67,6 +67,7 @@ import { NavigationBar } from './NavigationBar';
 import { CommandPalette } from './CommandPalette';
 import dagre from 'dagre';
 import { createDefaultWorkflow } from '../lib/defaultWorkflow';
+import { useTheme } from '../contexts/ThemeContext';
 
 import { Hexagon, Grid, SlidersHorizontal, Settings2, X, Copy, Trash2, Eye, Play, List, Map, Wand2, Hand, MousePointer2, Group, Magnet, Globe, Sparkles, Check } from 'lucide-react';
 
@@ -157,6 +158,7 @@ const nodeTypes = {
 
 
 export function Canvas() {
+  const { theme } = useTheme();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -202,7 +204,10 @@ export function Canvas() {
   // Grid Settings
   const [showGridSettings, setShowGridSettings] = useState(false);
   const [gridDensity, setGridDensity] = useState(20);
-  const [gridColor, setGridColor] = useState('#27272a');
+  // Seeded from the theme's text colour, so the grid reads as a faint tint of
+  // the foreground on any background instead of near-black on every one of
+  // them. Still a plain colour afterwards: the grid picker owns it from here.
+  const [gridColor, setGridColor] = useState(() => theme.text);
   const [gridVariant, setGridVariant] = useState<BackgroundVariant>(BackgroundVariant.Lines);
   const [gridTransparency, setGridTransparency] = useState(0.15);
   const [snapToGrid, setSnapToGrid] = useState(true);

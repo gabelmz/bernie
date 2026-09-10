@@ -118,3 +118,76 @@ body:not(.show-vertical-handles) .react-flow__handle-top,
 body:not(.show-vertical-handles) .react-flow__handle-bottom {
   display: none !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Light-mode re-toning.
+
+   Node status panels were painted dark-first: a near-black tint at 30% with a
+   -400 foreground. Over an eggshell canvas that reads as mud with unreadable
+   text. Rather than rewrite the literals across 27 components, remap them for
+   light themes only — dark themes never match this selector and are untouched.
+   ThemeProvider sets data-theme-mode from the background's luminance.
+
+   This is a shim. It goes away when the tone colours become semantic tokens.
+   --------------------------------------------------------------------------- */
+
+/* The muted step is the main text at 60% alpha, which is legible over a dark
+   card and far too faint over a near-white one. Hold more of the colour. */
+[data-theme-mode='light'] {
+  --theme-text-muted: color-mix(in srgb, var(--theme-text) 86%, transparent);
+}
+
+[data-theme-mode='light'] .bg-emerald-950\/30,
+[data-theme-mode='light'] .bg-emerald-950\/20 {
+  background-color: color-mix(in srgb, #059669 9%, transparent);
+}
+[data-theme-mode='light'] .bg-red-950\/30,
+[data-theme-mode='light'] .bg-red-950\/20 {
+  background-color: color-mix(in srgb, #dc2626 8%, transparent);
+}
+[data-theme-mode='light'] .bg-amber-950\/30 {
+  background-color: color-mix(in srgb, #d97706 12%, transparent);
+}
+[data-theme-mode='light'] .bg-purple-950\/30 {
+  background-color: color-mix(in srgb, #9333ea 8%, transparent);
+}
+[data-theme-mode='light'] .bg-green-950\/30 {
+  background-color: color-mix(in srgb, #16a34a 9%, transparent);
+}
+
+[data-theme-mode='light'] .border-emerald-900\/50,
+[data-theme-mode='light'] .border-emerald-900\/40 {
+  border-color: color-mix(in srgb, #059669 28%, transparent);
+}
+[data-theme-mode='light'] .border-red-900\/50,
+[data-theme-mode='light'] .border-red-900\/40 {
+  border-color: color-mix(in srgb, #dc2626 26%, transparent);
+}
+[data-theme-mode='light'] .border-amber-900\/50 {
+  border-color: color-mix(in srgb, #d97706 34%, transparent);
+}
+[data-theme-mode='light'] .border-purple-900\/50 {
+  border-color: color-mix(in srgb, #9333ea 26%, transparent);
+}
+
+/* Foregrounds: the -400 steps sit at roughly 2:1 on eggshell. Drop to the
+   -700 steps, which clear 4.5:1 while keeping the same hue. */
+[data-theme-mode='light'] .text-emerald-400,
+[data-theme-mode='light'] .text-emerald-500 { color: #047857; }
+[data-theme-mode='light'] .text-red-400,
+[data-theme-mode='light'] .text-red-500 { color: #b91c1c; }
+[data-theme-mode='light'] .text-amber-400 { color: #b45309; }
+[data-theme-mode='light'] .text-yellow-400 { color: #a16207; }
+[data-theme-mode='light'] .text-yellow-200 { color: #854d0e; }
+[data-theme-mode='light'] .text-purple-400 { color: #7e22ce; }
+[data-theme-mode='light'] .text-green-500 { color: #15803d; }
+[data-theme-mode='light'] .text-orange-400 { color: #c2410c; }
+[data-theme-mode='light'] .text-rose-500 { color: #be123c; }
+[data-theme-mode='light'] .text-indigo-500 { color: #4338ca; }
+[data-theme-mode='light'] .text-blue-400 { color: #1d4ed8; }
+[data-theme-mode='light'] .text-cyan-400 { color: #0e7490; }
+
+/* Node shadows are tuned for a black canvas; soften them over eggshell. */
+[data-theme-mode='light'] .react-flow__node {
+  box-shadow: 0 1px 2px rgba(88, 110, 117, 0.08), 0 6px 16px -8px rgba(88, 110, 117, 0.18);
+}
