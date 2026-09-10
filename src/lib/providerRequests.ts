@@ -287,6 +287,8 @@ export function normalizeKeepaProducts(products: any[]): Record<string, any>[] {
     buy_box_price: decodeKeepaPrice(currentKeepaValue(product, KEEPA_CSV_INDEX.BUY_BOX)),
     list_price: decodeKeepaPrice(currentKeepaValue(product, KEEPA_CSV_INDEX.LIST_PRICE)),
     sales_rank: decodeKeepaInt(currentKeepaValue(product, KEEPA_CSV_INDEX.SALES_RANK)),
+    // Keepa reports this one on the product itself rather than in a csv track.
+    monthly_sold: decodeKeepaInt(product?.monthlySold),
     rating: decodeKeepaRating(currentKeepaValue(product, KEEPA_CSV_INDEX.RATING)),
     review_count: decodeKeepaInt(currentKeepaValue(product, KEEPA_CSV_INDEX.REVIEW_COUNT)),
     package_weight_g: decodeKeepaInt(product?.packageWeight),

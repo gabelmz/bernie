@@ -283,28 +283,73 @@ async function runSupabaseWrite(ctx: RunContext, spec: OperationSpec): Promise<O
   return { rows: toRows(payload), meta: { table: String(table), written, mode: spec.id } };
 }
 
+/** Keepa's documented per-request ASIN limit for /product. */
+const KEEPA_BATCH_SIZE = 100;
+
 async function runKeepaProduct(ctx: RunContext, spec: OperationSpec): Promise<OperationResult> {
   const asins = parseAsinList(resolveParam('keepa', 'asins', ctx.params, ctx.config));
   const fromRows = ctx.rows.map((row) => row?.asin).filter(Boolean);
   const list = asins.length > 0 ? asins : parseAsinList(fromRows);
 
-  const url = buildKeepaProductUrl(
-    {
-      apiKey: ctx.config.apiKey,
-      domain: resolveParam('keepa', 'domain', ctx.params, ctx.config),
-      statsDays: resolveParam('keepa', 'stats', ctx.params, ctx.config),
-    },
-    list
-  );
+  const keepaConfig = {
+    apiKey: ctx.config.apiKey,
+    domain: resolveParam('keepa', 'domain', ctx.params, ctx.config),
+    statsDays: resolveParam('keepa', 'stats', ctx.params, ctx.config),
+  };
 
-  const response = await probe(url, { headers: { Accept: 'application/json' } });
-  const payload = await readJsonResponse(response);
-  if (!response.ok || payload?.error) fail(spec.label, response.ok ? 400 : response.status, payload);
+  // Keepa caps one request at 100 ASINs and buildKeepaProductUrl silently
+  // truncates to fit, so anything longer has to go a batch at a time. A sheet
+  // of issues is routinely longer than 100.
+  const products: Record<string, any>[] = [];
+  let tokensLeft: number | null = null;
+
+  for (let start = 0; start < list.length; start += KEEPA_BATCH_SIZE) {
+    const batch = list.slice(start, start + KEEPA_BATCH_SIZE);
+    const response = await probe(buildKeepaProductUrl(keepaConfig, batch), {
+      headers: { Accept: 'application/json' },
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok || payload?.error) fail(spec.label, response.ok ? 400 : response.status, payload);
+
+    products.push(...normalizeKeepaProducts(payload?.products));
+    if (payload?.tokensLeft !== undefined && payload?.tokensLeft !== null) tokensLeft = payload.tokensLeft;
+  }
+
+  const rows = ctx.params.mergeInputRows ? mergeKeepaIntoRows(ctx.rows, products) : products;
 
   return {
-    rows: normalizeKeepaProducts(payload?.products),
-    meta: { tokensLeft: payload?.tokensLeft ?? null, requestedAsins: list },
+    rows,
+    meta: {
+      tokensLeft,
+      requestedAsins: list,
+      matched: products.length,
+      batches: Math.ceil(list.length / KEEPA_BATCH_SIZE),
+    },
   };
+}
+
+/**
+ * Re-attaches each product to the row its ASIN came from, so whatever the
+ * upstream node knew about the ASIN survives the lookup. Rows Keepa returned
+ * nothing for are kept, with the product fields absent rather than zeroed.
+ */
+function mergeKeepaIntoRows(
+  rows: Record<string, any>[],
+  products: Record<string, any>[]
+): Record<string, any>[] {
+  if (rows.length === 0) return products;
+
+  const byAsin = new Map<string, Record<string, any>>();
+  products.forEach((product) => {
+    const asin = String(product.asin ?? '').trim().toUpperCase();
+    if (asin) byAsin.set(asin, product);
+  });
+
+  return rows.map((row) => {
+    const asin = String(row?.asin ?? '').trim().toUpperCase();
+    const product = asin ? byAsin.get(asin) : undefined;
+    return product ? { ...row, ...product } : { ...row };
+  });
 }
 
 async function runDriveList(ctx: RunContext, spec: OperationSpec): Promise<OperationResult> {
@@ -477,6 +522,52 @@ function flattenGithub(item: any, operationId: string): Record<string, any> {
     updated_at: item?.updated_at ?? null,
     url: item?.html_url ?? null,
   };
+}
+
+/**
+ * Asana creates one task per request, so a row set becomes a request per row.
+ * The generic REST path would send only the first row, which is the wrong
+ * answer for an operation whose whole point is writing a batch.
+ */
+async function runAsanaCreateTasks(ctx: RunContext, spec: OperationSpec): Promise<OperationResult> {
+  const transport = transportFor('asana', ctx.config, ctx.googleToken);
+  if (ctx.rows.length === 0) throw new Error(`${spec.label}: no input rows to create tasks from.`);
+
+  const projects = resolveParam('asana', 'projects', ctx.params, ctx.config);
+  const workspace = resolveParam('asana', 'workspace', ctx.params, ctx.config);
+  const assignee = resolveParam('asana', 'assignee', ctx.params, ctx.config);
+  if (!projects && !workspace) {
+    throw new Error('Asana: a project or workspace GID is required to create tasks.');
+  }
+
+  const created: Record<string, any>[] = [];
+  for (const row of ctx.rows) {
+    const name = String(row?.name ?? row?.title ?? '').trim();
+    if (!name) throw new Error('Asana: every row needs a name to become a task.');
+
+    // Node-level fields are the default; a row may override any of them.
+    const data: Record<string, any> = { name };
+    if (projects) data.projects = [String(projects)];
+    if (workspace) data.workspace = String(workspace);
+    if (assignee) data.assignee = String(assignee);
+
+    Object.entries(row).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (key === 'title') return;
+      data[key] = key === 'projects' && !Array.isArray(value) ? [String(value)] : value;
+    });
+
+    const response = await probe(`${transport.baseUrl}/tasks`, {
+      method: 'POST',
+      headers: transport.headers,
+      body: JSON.stringify({ data }),
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) fail(spec.label, response.status, payload);
+    created.push(...normalizeAsanaTasks([payload?.data].filter(Boolean)));
+  }
+
+  return { rows: created, meta: { created: created.length } };
 }
 
 async function runGithubCreateIssues(ctx: RunContext, spec: OperationSpec): Promise<OperationResult> {
@@ -771,6 +862,7 @@ const CUSTOM_HANDLERS: Record<string, (ctx: RunContext, spec: OperationSpec) => 
   'supabase.count': runSupabaseCount,
   'supabase.write': runSupabaseWrite,
   'keepa.product': runKeepaProduct,
+  'asana.createTasks': runAsanaCreateTasks,
   'drive.list': runDriveList,
   'drive.get': runDriveGet,
   'drive.upload': runDriveUpload,

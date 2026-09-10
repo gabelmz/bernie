@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
 import { ScriptNodeData } from '../../types';
 import { Terminal, Play } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
@@ -8,6 +8,14 @@ export function ScriptNode({ data, id }: NodeProps & { data: ScriptNodeData }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scriptVal, setScriptVal] = useState(data.script || '');
+  const { updateNodeData } = useReactFlow();
+
+  // Local state keeps typing responsive; the write-through is what survives a
+  // reload, since the canvas autosaves from node data and not from this state.
+  const editScript = (value: string) => {
+    setScriptVal(value);
+    updateNodeData(id, { script: value });
+  };
 
   const runScript = () => {
     setLoading(true);
@@ -56,7 +64,7 @@ export function ScriptNode({ data, id }: NodeProps & { data: ScriptNodeData }) {
             <textarea
               className="w-full bg-surface/50 border border-border/50 rounded p-3 text-[13px] text-yellow-200 font-mono resize-none outline-none focus:border-yellow-500/50 min-h-[100px]"
               value={scriptVal}
-              onChange={(e) => setScriptVal(e.target.value)}
+              onChange={(e) => editScript(e.target.value)}
               placeholder="return input.data + ' processed';"
             />
           </div>

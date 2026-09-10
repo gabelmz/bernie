@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { 
   ReactFlow, 
   Background,
@@ -66,6 +66,7 @@ import { NodeEditorPane } from './NodeEditorPane';
 import { NavigationBar } from './NavigationBar';
 import { CommandPalette } from './CommandPalette';
 import dagre from 'dagre';
+import { createDefaultWorkflow } from '../lib/defaultWorkflow';
 
 import { Hexagon, Grid, SlidersHorizontal, Settings2, X, Copy, Trash2, Eye, Play, List, Map, Wand2, Hand, MousePointer2, Group, Magnet, Globe, Sparkles, Check } from 'lucide-react';
 
@@ -154,20 +155,6 @@ const nodeTypes = {
   template_report: TemplateReportNode,
 };
 
-const initialNodes: Node[] = [
-  {
-    id: 'intro',
-    type: 'json',
-    position: { x: 100, y: 100 },
-    data: { 
-      title: 'Welcome to Bernie',
-      jsonData: {
-        message: "Drag nodes from the sidebar.",
-        features: ["Google Drive", "HTTP APIs", "AI Automation"]
-      } 
-    }
-  }
-];
 
 export function Canvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -175,19 +162,29 @@ export function Canvas() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    // A canvas with no saved work opens on the default workflow rather than
+    // empty, so the graph is something to edit instead of something to build.
+    const seed = () => {
+      const { nodes: seedNodes, edges: seedEdges } = createDefaultWorkflow();
+      setNodes(seedNodes);
+      setEdges(seedEdges);
+    };
+
     const saved = localStorage.getItem('bernie-autosave');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.nodes && parsed.nodes.length > 0) setNodes(parsed.nodes);
-        else setNodes(initialNodes);
-        
-        if (parsed.edges) setEdges(parsed.edges);
+        if (parsed.nodes && parsed.nodes.length > 0) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges || []);
+        } else {
+          seed();
+        }
       } catch {
-        setNodes(initialNodes);
+        seed();
       }
     } else {
-      setNodes(initialNodes);
+      seed();
     }
     setIsLoaded(true);
   }, []);
@@ -550,15 +547,22 @@ export function Canvas() {
     return () => window.removeEventListener('paste', handlePaste);
   }, [onAddNode]);
 
-  // Ensure initial nodes have the callback attached
-  const nodesWithCallbacks = nodes.map(node => ({
-    ...node,
-    data: {
-      ...node.data,
-      onDataFetched: node.data.onDataFetched || handleNodeDataUpdate,
-      runWorkflow: node.data.runWorkflow || runWorkflow
-    }
-  }));
+  // Ensure initial nodes have the callback attached. Memoised because React
+  // Flow re-adopts every node whose object identity changed, and rebuilding
+  // them on each render kept resetting the measurements it takes from the DOM
+  // — leaving nodes unmeasured, which silently drops every edge.
+  const nodesWithCallbacks = useMemo(
+    () =>
+      nodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          onDataFetched: node.data.onDataFetched || handleNodeDataUpdate,
+          runWorkflow: node.data.runWorkflow || runWorkflow
+        }
+      })),
+    [nodes, handleNodeDataUpdate, runWorkflow]
+  );
 
 
   const selectedNodes = nodes.filter(n => n.selected);

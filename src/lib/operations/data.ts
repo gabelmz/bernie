@@ -187,6 +187,12 @@ const keepaOps: OperationSpec[] = [
       { key: 'domain', label: 'Marketplace', type: 'select', options: KEEPA_DOMAINS },
       numberField('stats', 'Stats Window (days)', '30'),
       { key: 'history', label: 'Include full price history', type: 'checkbox' },
+      {
+        key: 'mergeInputRows',
+        label: 'Keep the columns of the incoming rows',
+        type: 'checkbox',
+        help: 'Merges each ASIN’s Keepa fields into the row it came from, so upstream context survives. Keepa fields win on a name clash.',
+      },
     ],
   },
   {

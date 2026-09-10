@@ -147,7 +147,9 @@ function isBlank(value: any): boolean {
  * operation still runs when neither the node nor the stored config sets one.
  */
 const PARAM_FALLBACKS: Partial<Record<IntegrationId, Record<string, any>>> = {
-  sheets: { range: 'Sheet1' },
+  // Sheets rejects a values write that does not say how to read the values,
+  // so these two cannot be left to the user to fill in.
+  sheets: { range: 'Sheet1', valueInputOption: 'USER_ENTERED', insertDataOption: 'INSERT_ROWS' },
   keepa: { domain: 1 },
 };
 

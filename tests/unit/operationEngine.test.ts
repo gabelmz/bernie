@@ -144,6 +144,32 @@ describe('Request building', () => {
     ]);
   });
 
+  it('always tells Sheets how to interpret written values', () => {
+    // The API rejects a values write that omits valueInputOption, so neither
+    // write operation may depend on the user filling the field in.
+    const update = build('sheets', 'values.update', { spreadsheetId: 'abc', range: 'Tasks!A1' }, { accessToken: 'ya29' }, [
+      { a: 1 },
+    ]);
+    expect(update.url).toContain('valueInputOption=USER_ENTERED');
+
+    const append = build('sheets', 'values.append', { spreadsheetId: 'abc', range: 'Tasks' }, { accessToken: 'ya29' }, [
+      { a: 1 },
+    ]);
+    expect(append.url).toContain('valueInputOption=USER_ENTERED');
+    expect(append.url).toContain('insertDataOption=INSERT_ROWS');
+  });
+
+  it('lets a node ask for raw values instead', () => {
+    const request = build(
+      'sheets',
+      'values.update',
+      { spreadsheetId: 'abc', range: 'Tasks!A1', valueInputOption: 'RAW' },
+      { accessToken: 'ya29' },
+      [{ a: 1 }]
+    );
+    expect(request.url).toContain('valueInputOption=RAW');
+  });
+
   it('omits the header row when the operation says not to write one', () => {
     const request = build(
       'sheets',

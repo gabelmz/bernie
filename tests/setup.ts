@@ -2,16 +2,22 @@ import '@testing-library/jest-dom/vitest';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Server-side suites run with `@vitest-environment node` and have no DOM to
+// shim. Everything below is jsdom-only, so bail rather than throw on `window`.
+const hasDom = typeof window !== 'undefined';
+
 // Mock ResizeObserver for xyflow/react and responsive components
 class MockResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
 }
-window.ResizeObserver = window.ResizeObserver || MockResizeObserver;
+if (hasDom) {
+  window.ResizeObserver = window.ResizeObserver || MockResizeObserver;
+}
 
 // Mock matchMedia
-Object.defineProperty(window, 'matchMedia', {
+if (hasDom) Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
     matches: false,
@@ -41,6 +47,6 @@ const localStorageMock = (() => {
     },
   };
 })();
-Object.defineProperty(window, 'localStorage', {
+if (hasDom) Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });

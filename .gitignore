@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# npm is the package manager here; bun install fails on this repo.
+bun.lock
+bun.lockb

@@ -71,6 +71,7 @@ const operations: OperationSpec[] = [
     resultPath: 'data',
     consumesRows: true,
     emitsRows: true,
+    custom: 'asana.createTasks',
     fields: [
       textField('projects', 'Project GID', 'Task is added to this project', 'Applied to every row that does not set its own.'),
       textField('workspace', 'Workspace GID', 'Required when no project is given'),

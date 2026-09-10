@@ -76,6 +76,15 @@ const sheetsOps: OperationSpec[] = [
       textField('spreadsheetId', 'Spreadsheet ID', 'Defaults to the connection setting'),
       textField('range', 'Range', 'Sheet1', RANGE_HELP),
       { key: 'includeHeaders', label: 'Write a header row', type: 'checkbox' },
+      {
+        key: 'valueInputOption',
+        label: 'Value Entry',
+        type: 'select',
+        options: [
+          { value: 'USER_ENTERED', label: 'As if typed (formulas and dates parsed)' },
+          { value: 'RAW', label: 'Raw (stored verbatim)' },
+        ],
+      },
     ],
   },
   {
@@ -94,6 +103,15 @@ const sheetsOps: OperationSpec[] = [
       textField('spreadsheetId', 'Spreadsheet ID', 'Defaults to the connection setting'),
       textField('range', 'Range', 'Sheet1!A1', RANGE_HELP),
       { key: 'includeHeaders', label: 'Write a header row', type: 'checkbox' },
+      {
+        key: 'valueInputOption',
+        label: 'Value Entry',
+        type: 'select',
+        options: [
+          { value: 'USER_ENTERED', label: 'As if typed (formulas and dates parsed)' },
+          { value: 'RAW', label: 'Raw (stored verbatim)' },
+        ],
+      },
     ],
   },
   {
