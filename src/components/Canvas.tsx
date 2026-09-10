@@ -13,7 +13,8 @@ import {
   Edge,
   Node,
   ReactFlowInstance,
-  SelectionMode
+  SelectionMode,
+  ViewportPortal
 } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 import { useUndoRedo } from '../hooks/useUndoRedo';
@@ -66,13 +67,18 @@ import { NodeEditorPane } from './NodeEditorPane';
 import { NavigationBar } from './NavigationBar';
 import { CommandPalette } from './CommandPalette';
 import dagre from 'dagre';
-import { createDefaultWorkflow } from '../lib/defaultWorkflow';
+import { CANVAS_CENTER, createDefaultWorkflow } from '../lib/defaultWorkflow';
 import { useTheme } from '../contexts/ThemeContext';
+import { StickyNote } from './nodes/StickyNote';
+import { WorkflowPanel } from './WorkflowPanel';
 
-import { Hexagon, Grid, SlidersHorizontal, Settings2, X, Copy, Trash2, Eye, Play, List, Map, Wand2, Hand, MousePointer2, Group, Magnet, Globe, Sparkles, Check } from 'lucide-react';
+import { Cloud, Code2, GitBranch, StickyNote as StickyIcon, Hexagon, Grid, SlidersHorizontal, Settings2, X, Copy, Trash2, Eye, Play, List, Map, Wand2, Hand, MousePointer2, Group, Magnet, Globe, Sparkles, Check } from 'lucide-react';
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+/** Zoom the camera opens at, centred on CANVAS_CENTER. */
+const DEFAULT_ZOOM = 0.55;
 
 const nodeWidth = 350;
 const nodeHeight = 150;
@@ -154,6 +160,7 @@ const nodeTypes = {
   template_data_pipeline: TemplateDataPipelineNode,
   template_onboarding: TemplateOnboardingNode,
   template_report: TemplateReportNode,
+  sticky: StickyNote,
 };
 
 
@@ -221,6 +228,7 @@ export function Canvas() {
 
   // Selection Mode State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [panelTab, setPanelTab] = useState<'code' | 'mermaid' | 'saved' | null>(null);
 
   // Context Menu State
   const [menu, setMenu] = useState<{ id: string; top: number; left: number; type: 'node' | 'edge' | 'pane' } | null>(null);
@@ -315,6 +323,53 @@ export function Canvas() {
       return changed ? next : nds;
     });
   }, [isLoaded, handleNodeDataUpdate, runWorkflow, setNodes]);
+
+  /** Drops an imported graph beside whatever is already on the canvas. */
+  const importGraph = useCallback((incoming: Node[], incomingEdges: Edge[]) => {
+    takeSnapshot();
+    setNodes((current) => {
+      // Imported ids are namespaced, but a second import of the same diagram
+      // would collide with the first, so make them unique on the way in.
+      const existing = new Set(current.map((node) => node.id));
+      // `Map` is lucide's icon in this module, so a plain record it is.
+      const remap: Record<string, string> = {};
+      incoming.forEach((node) => {
+        let id = node.id;
+        while (existing.has(id)) id = `${node.id}-${nanoid(4)}`;
+        existing.add(id);
+        remap[node.id] = id;
+      });
+
+      setEdges((currentEdges) => [
+        ...currentEdges,
+        ...incomingEdges.map((edge) => ({
+          ...edge,
+          id: `${edge.id}-${nanoid(4)}`,
+          source: remap[edge.source] ?? edge.source,
+          target: remap[edge.target] ?? edge.target,
+        })),
+      ]);
+
+      return [
+        ...current,
+        ...incoming.map((node) => ({
+          ...node,
+          id: remap[node.id],
+          data: { ...node.data, onDataFetched: handleNodeDataUpdate, runWorkflow },
+        })),
+      ];
+    });
+  }, [setNodes, setEdges, takeSnapshot, handleNodeDataUpdate, runWorkflow]);
+
+  /** Swaps the canvas for a loaded workflow. */
+  const replaceGraph = useCallback((incoming: Node[], incomingEdges: Edge[]) => {
+    takeSnapshot();
+    setNodes(incoming.map((node) => ({
+      ...node,
+      data: { ...node.data, onDataFetched: handleNodeDataUpdate, runWorkflow },
+    })));
+    setEdges(incomingEdges);
+  }, [setNodes, setEdges, takeSnapshot, handleNodeDataUpdate, runWorkflow]);
 
   const onAddNode = useCallback((type: string, data: any = {}, position?: { x: number, y: number }) => {
     takeSnapshot();
@@ -652,7 +707,13 @@ export function Canvas() {
         <ReactFlow
           nodes={nodesWithCallbacks}
           edges={edges}
-          onInit={setReactFlowInstance}
+          onInit={(instance) => {
+            setReactFlowInstance(instance);
+            // defaultViewport pins flow (0,0) to the container's top-left
+            // corner. setCenter puts it under the middle of the viewport,
+            // which is what "the camera opens on the centre point" means.
+            instance.setCenter(CANVAS_CENTER.x, CANVAS_CENTER.y, { zoom: DEFAULT_ZOOM });
+          }}
           onDrop={onDrop}
           onDragOver={onDragOver}
           onNodeDragStart={takeSnapshot}
@@ -667,7 +728,6 @@ export function Canvas() {
           onEdgeContextMenu={onEdgeContextMenu}
           nodeTypes={nodeTypes}
           className="bg-canvas"
-          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
           defaultEdgeOptions={{
             type: 'smoothstep',
             animated: true,
@@ -681,6 +741,20 @@ export function Canvas() {
           selectionOnDrag={isSelectionMode}
           selectionMode={SelectionMode.Partial}
         >
+          <ViewportPortal>
+            <div
+              className="pointer-events-none select-none"
+              style={{ position: 'absolute', left: CANVAS_CENTER.x, top: CANVAS_CENTER.y, transform: 'translate(-50%, -50%)' }}
+              aria-hidden
+            >
+              <svg width="40" height="40" viewBox="0 0 40 40" style={{ opacity: 0.35, overflow: 'visible' }}>
+                <line x1="20" y1="6" x2="20" y2="34" stroke="var(--color-text-muted)" strokeWidth="1" />
+                <line x1="6" y1="20" x2="34" y2="20" stroke="var(--color-text-muted)" strokeWidth="1" />
+                <circle cx="20" cy="20" r="5" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" />
+              </svg>
+            </div>
+          </ViewportPortal>
+
           <Background 
             color={gridColor} 
             style={{ opacity: gridTransparency }} 
@@ -705,6 +779,37 @@ export function Canvas() {
                 title="Select Mode"
               >
                 <MousePointer2 className="w-5 h-5" />
+              </button>
+
+              <div className="w-px bg-border mx-1 my-1.5" />
+
+              <button
+                onClick={() => setPanelTab((open) => (open === 'code' ? null : 'code'))}
+                className={`p-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors ${panelTab === 'code' ? 'bg-surface text-indigo-500' : 'text-text-muted hover:text-text-main hover:bg-white/5'}`}
+                title="Code — what runs when this workflow runs"
+              >
+                <Code2 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setPanelTab((open) => (open === 'mermaid' ? null : 'mermaid'))}
+                className={`p-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors ${panelTab === 'mermaid' ? 'bg-surface text-indigo-500' : 'text-text-muted hover:text-text-main hover:bg-white/5'}`}
+                title="Mermaid — paste a flowchart to build the graph"
+              >
+                <GitBranch className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setPanelTab((open) => (open === 'saved' ? null : 'saved'))}
+                className={`p-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors ${panelTab === 'saved' ? 'bg-surface text-indigo-500' : 'text-text-muted hover:text-text-main hover:bg-white/5'}`}
+                title="Save workflow"
+              >
+                <Cloud className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => onAddNode('sticky', { title: 'Note', text: '', tone: 'yellow' })}
+                className="p-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-text-muted hover:text-text-main hover:bg-white/5"
+                title="Add a sticky note"
+              >
+                <StickyIcon className="w-5 h-5" />
               </button>
             </div>
           </Panel>
@@ -887,6 +992,18 @@ export function Canvas() {
             />
           )}
         </ReactFlow>
+
+        {panelTab && (
+          <WorkflowPanel
+            nodes={nodes}
+            edges={edges}
+            tab={panelTab}
+            onTabChange={setPanelTab}
+            onClose={() => setPanelTab(null)}
+            onImport={importGraph}
+            onReplace={replaceGraph}
+          />
+        )}
 
         {/* Custom Context Menu */}
         {menu && (() => {

@@ -5,6 +5,7 @@ import { Play, Globe, Code2, Wand2, X } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 import { applyHttpDefaults } from '../../lib/integrationCore';
 import { configFor } from '../../lib/integrations';
+import { apiUrl } from '../../lib/apiBase';
 
 export function HttpNode({ data, id }: NodeProps & { data: HttpNodeData }) {
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,7 @@ export function HttpNode({ data, id }: NodeProps & { data: HttpNodeData }) {
     setIsParsing(true);
     setError(null);
     try {
-      const res = await fetch('/api/ai/parse-request', {
+      const res = await fetch(apiUrl('/api/ai/parse-request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ snippet })
@@ -55,7 +56,7 @@ export function HttpNode({ data, id }: NodeProps & { data: HttpNodeData }) {
       // Fold in the saved Custom HTTP defaults; node values win over them.
       const resolved = applyHttpDefaults(configFor('http'), { url: data.url, headers: data.headers });
 
-      const res = await fetch('/api/proxy', {
+      const res = await fetch(apiUrl('/api/proxy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

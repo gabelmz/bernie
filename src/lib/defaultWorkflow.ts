@@ -148,14 +148,52 @@ export const defaultWorkflowEdges: Edge[] = [
   edge('top-asana', 'top-issues', 'asana-tasks'),
 ];
 
+/**
+ * The canvas origin. The camera opens here and the seeded graph is laid out
+ * around it, so "where the workflow is" and "where the camera points" are the
+ * same fact rather than two constants that drift apart.
+ */
+export const CANVAS_CENTER = { x: 0, y: 0 } as const;
+
+/**
+ * Nominal node extent used only to centre the layout. Nodes are measured for
+ * real once they mount; this just has to be close enough that the graph looks
+ * centred before that happens.
+ */
+const NOMINAL_NODE = { width: 360, height: 190 };
+
+/**
+ * Shifts a layout so the centre of its bounding box lands on CANVAS_CENTER.
+ * Doing it here rather than hand-picking coordinates means adding a node to
+ * the seed cannot quietly push the graph off centre.
+ */
+export function centerLayout(nodes: Node[]): Node[] {
+  if (nodes.length === 0) return nodes;
+
+  const left = Math.min(...nodes.map((node) => node.position.x));
+  const top = Math.min(...nodes.map((node) => node.position.y));
+  const right = Math.max(...nodes.map((node) => node.position.x + NOMINAL_NODE.width));
+  const bottom = Math.max(...nodes.map((node) => node.position.y + NOMINAL_NODE.height));
+
+  const dx = CANVAS_CENTER.x - (left + right) / 2;
+  const dy = CANVAS_CENTER.y - (top + bottom) / 2;
+
+  return nodes.map((node) => ({
+    ...node,
+    position: { x: Math.round(node.position.x + dx), y: Math.round(node.position.y + dy) },
+  }));
+}
+
 /** A fresh copy, so the canvas never mutates the module-level seed. */
 export function createDefaultWorkflow(): { nodes: Node[]; edges: Edge[] } {
+  const copies = defaultWorkflowNodes.map((node) => ({
+    ...node,
+    position: { ...node.position },
+    data: { ...node.data },
+  }));
+
   return {
-    nodes: defaultWorkflowNodes.map((node) => ({
-      ...node,
-      position: { ...node.position },
-      data: { ...node.data },
-    })),
+    nodes: centerLayout(copies),
     edges: defaultWorkflowEdges.map((edge) => ({ ...edge })),
   };
 }

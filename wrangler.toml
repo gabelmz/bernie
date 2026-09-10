@@ -1,0 +1,21 @@
+# The Bernie API on Cloudflare Workers.
+#
+# It serves two things:
+#   /api/workflows*            saved workflows, backed by D1
+#   /api/integrations/execute  the same operation runner the Express dev
+#                              server uses, so a statically hosted front end
+#                              has a working API instead of a 405.
+name = "bernie-api"
+main = "worker/index.ts"
+compatibility_date = "2026-09-01"
+# nodejs_compat is what lets the shared runner's few Node touchpoints resolve.
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bernie-workflows"
+database_id = "bb3cd583-57a3-43fc-bf07-d3dd0384980d"
+migrations_dir = "migrations"
+
+[observability]
+enabled = true

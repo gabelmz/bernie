@@ -3,8 +3,10 @@
  * own error message so nodes can show something actionable instead of a bare
  * status code.
  */
+import { apiUrl, describeApiFailure } from './apiBase';
+
 export async function postJson<T = any>(path: string, body: any): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body ?? {}),
@@ -21,7 +23,7 @@ export async function postJson<T = any>(path: string, body: any): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error || `Request to ${path} failed (${response.status}).`);
+    throw new Error(payload?.error || describeApiFailure(path, response.status));
   }
 
   return payload as T;

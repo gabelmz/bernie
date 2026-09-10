@@ -1,4 +1,5 @@
 import express from "express";
+import http from "http";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import cors from "cors";
@@ -179,6 +180,38 @@ import { registerExecuteRoute } from "./src/server/executeRoute";
 
 registerProviderRoutes(app);
 registerExecuteRoute(app);
+
+/**
+ * Saved workflows live in Cloudflare D1, which only the Worker can reach. In
+ * development the Worker runs beside this server (`npm run worker:dev`), so
+ * forward rather than reimplement — one implementation of the store, and dev
+ * exercises the same code that ships.
+ */
+const WORKER_URL = (process.env.WORKER_URL || "http://127.0.0.1:8787").replace(/\/+$/, "");
+
+// Express 4 here, so a regex rather than the v5 "{/*path}" syntax.
+app.all(/^\/api\/workflows(?:\/.*)?$/, async (req, res) => {
+  const target = `${WORKER_URL}${req.originalUrl}`;
+  try {
+    const upstream = await fetch(target, {
+      method: req.method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
+      },
+      body: req.method === "GET" || req.method === "HEAD" ? undefined : JSON.stringify(req.body ?? {}),
+    });
+
+    const text = await upstream.text();
+    res.status(upstream.status).type("application/json").send(text);
+  } catch (err: any) {
+    res.status(502).json({
+      error:
+        `The workflow store is not reachable at ${WORKER_URL}. ` +
+        `Start it with "npm run worker:dev", or set WORKER_URL to a deployed Worker.`,
+    });
+  }
+});
 
 app.post("/api/asana/tasks", async (req, res) => {
   const config = mergedConfig<AsanaConfig>("asana", req.body?.config);
@@ -616,9 +649,16 @@ app.post("/api/integrations/test", async (req, res) => {
 });
 
 async function startServer() {
+  // Built up front so Vite can run HMR over this same server. Left to itself
+  // in middleware mode Vite opens a second websocket on port 24678; when the
+  // browser cannot reach that port the HMR client gives up and reloads the
+  // page, over and over. Sharing the port removes the second listener and the
+  // reload loop with it.
+  const httpServer = http.createServer(app);
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: { server: httpServer } },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -630,7 +670,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });
 }

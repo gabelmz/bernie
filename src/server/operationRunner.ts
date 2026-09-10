@@ -31,7 +31,23 @@ import {
   parseAsinList,
   parseMcpResponseBody,
 } from '../lib/providerRequests';
-import { GEMINI_UNCONFIGURED, geminiFor, probe, readJsonResponse } from './integrationKit';
+import { probe, readJsonResponse } from './runtime';
+
+export const GEMINI_UNCONFIGURED = 'Gemini is not configured. Add an API key under Connections & APIs.';
+
+/**
+ * The only shape the runner needs from a Gemini client. Injecting it keeps the
+ * Gemini SDK — which is Node-only — out of this module, so the Cloudflare
+ * Worker can import the runner and hand in a REST-backed implementation.
+ */
+export interface GeminiClient {
+  model: string;
+  generateContent(request: {
+    model: string;
+    contents: string;
+    config?: Record<string, any>;
+  }): Promise<{ text: string | null }>;
+}
 
 export interface OperationResult {
   /** Rows to pass downstream, when the operation emits any. */
@@ -49,6 +65,8 @@ export interface RunContext {
   params: Record<string, any>;
   rows: Record<string, any>[];
   googleToken?: string;
+  /** Supplied by the host runtime; absent means Gemini operations cannot run. */
+  gemini?: (config: any) => GeminiClient | null;
 }
 
 /** An upstream 4xx/5xx, carrying the provider's own message and status. */
@@ -609,7 +627,10 @@ async function runGithubContent(ctx: RunContext, spec: OperationSpec): Promise<O
   const payload = result.data;
 
   if (payload?.content && payload?.encoding === 'base64') {
-    const decoded = Buffer.from(String(payload.content), 'base64').toString('utf8');
+    // atob rather than Buffer, so this path also runs on Workers.
+    const binary = atob(String(payload.content).replace(/\s/g, ''));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const decoded = new TextDecoder().decode(bytes);
     try {
       const parsed = JSON.parse(decoded);
       return { rows: toRows(parsed), data: parsed, text: decoded };
@@ -793,7 +814,7 @@ async function runHttpRequest(ctx: RunContext, spec: OperationSpec): Promise<Ope
 }
 
 async function runGemini(ctx: RunContext, spec: OperationSpec): Promise<OperationResult> {
-  const gemini = geminiFor(ctx.config);
+  const gemini = ctx.gemini?.(ctx.config);
   if (!gemini) throw new Error(GEMINI_UNCONFIGURED);
 
   const model = String(resolveParam('gemini', 'model', ctx.params, ctx.config) || gemini.model);
@@ -828,7 +849,7 @@ async function runGemini(ctx: RunContext, spec: OperationSpec): Promise<Operatio
       Use an empty array when a section has nothing worth reporting. Never invent fields or values that are not in the data.
     `;
 
-    const response = await gemini.client.models.generateContent({
+    const response = await gemini.generateContent({
       model,
       contents: prompt,
       config: { responseMimeType: 'application/json' },
@@ -845,7 +866,7 @@ async function runGemini(ctx: RunContext, spec: OperationSpec): Promise<Operatio
   }
 
   const content = buildChatPrompt(String(ctx.params.prompt || ''), ctx.rows, Number(ctx.params.sampleSize) || 40);
-  const response = await gemini.client.models.generateContent({ model, contents: content });
+  const response = await gemini.generateContent({ model, contents: content });
   const text = response.text ?? null;
 
   return { text, rows: text ? [{ text }] : [], meta: { model } };

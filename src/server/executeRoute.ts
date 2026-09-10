@@ -8,69 +8,30 @@
  */
 
 import type { Express } from 'express';
-import { IntegrationId, toRows, validateIntegrationConfig } from '../lib/integrationCore';
-import { findOperation, operationsFor, resolveOperation } from '../lib/operations';
-import { UpstreamError, runOperation } from './operationRunner';
-import { mergedConfig } from './integrationKit';
+import { IntegrationId } from '../lib/integrationCore';
+import { operationsFor, resolveOperation } from '../lib/operations';
+import { executeOperation } from './executeCore';
+import { geminiFor } from './integrationKit';
 
 export function registerExecuteRoute(app: Express): void {
   app.post('/api/integrations/execute', async (req, res) => {
-    const integration = String(req.body?.integration || '') as IntegrationId;
-    const operationId = String(req.body?.operation || '');
+    // The Worker serves the same route from the same core; this is only the
+    // Express wrapper around it, plus the Node-backed Gemini client.
+    const outcome = await executeOperation(req.body, {
+      gemini: (config) => {
+        const resolved = geminiFor(config);
+        if (!resolved) return null;
+        return {
+          model: resolved.model,
+          generateContent: (request) => resolved.client.models.generateContent(request) as any,
+        };
+      },
+    });
 
-    const spec = resolveOperation(integration, operationId);
-    if (!spec) {
-      return res.status(400).json({
-        error: operationId
-          ? `Unknown operation "${operationId}" for "${integration}".`
-          : `"${integration}" has no operations.`,
-      });
+    if (outcome.status >= 400) {
+      console.error(`Operation ${req.body?.integration}/${req.body?.operation} failed:`, outcome.body.error);
     }
-
-    // A requested-but-unknown operation is a bug worth reporting, not a silent
-    // fallback to the default.
-    if (operationId && !findOperation(integration, operationId)) {
-      return res.status(400).json({ error: `Unknown operation "${operationId}" for "${integration}".` });
-    }
-
-    const config = mergedConfig<Record<string, any>>(integration, req.body?.config);
-
-    // Gemini authorizes with a key; the rest report their own missing fields
-    // through the transport, which gives a more specific message.
-    const { valid, missing } = validateIntegrationConfig(integration, config);
-    if (!valid) {
-      return res.status(400).json({
-        error: `${integration} is not configured yet: missing ${missing.join(', ')}.`,
-        missing,
-      });
-    }
-
-    try {
-      const result = await runOperation({
-        integration,
-        operationId: spec.id,
-        config,
-        params: req.body?.params || {},
-        rows: toRows(req.body?.rows ?? req.body?.input),
-        googleToken: req.body?.accessToken,
-      });
-
-      res.json({
-        integration,
-        operation: result.operation,
-        direction: spec.direction,
-        rows: result.rows ?? [],
-        count: (result.rows ?? []).length,
-        data: result.data ?? null,
-        text: result.text ?? null,
-        meta: result.meta ?? null,
-        ranAt: new Date().toISOString(),
-      });
-    } catch (err: any) {
-      const status = err instanceof UpstreamError ? err.status : 400;
-      console.error(`Operation ${integration}/${spec.id} failed:`, err?.message || err);
-      res.status(status).json({ error: err?.message || `${spec.label} failed.` });
-    }
+    res.status(outcome.status).json(outcome.body);
   });
 
   /** The operation catalog, so a client can discover what is callable. */

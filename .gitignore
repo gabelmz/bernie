@@ -10,3 +10,7 @@ coverage/
 # npm is the package manager here; bun install fails on this repo.
 bun.lock
 bun.lockb
+
+# Wrangler local state and generated types
+.wrangler/
+worker-configuration.d.ts

@@ -11,7 +11,12 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "worker:dev": "wrangler dev --port 8787 --local",
+    "worker:deploy": "wrangler deploy",
+    "worker:migrate": "wrangler d1 migrations apply bernie-workflows --remote",
+    "worker:migrate:local": "wrangler d1 migrations apply bernie-workflows",
+    "worker:lint": "tsc -p worker/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -38,6 +43,7 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260910.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/cookie-parser": "^1.4.10",
@@ -55,6 +61,10 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "wrangler": "^4.131.0"
+  },
+  "allowScripts": {
+    "workerd@1.20260910.1": true
   }
 }

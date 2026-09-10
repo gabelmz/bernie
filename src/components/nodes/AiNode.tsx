@@ -4,6 +4,7 @@ import { AiNodeData } from '../../types';
 import { Sparkles, MessageSquare } from 'lucide-react';
 import { NodeWrapper, NodeHeader } from './NodeWrapper';
 import { configFor } from '../../lib/integrations';
+import { apiUrl } from '../../lib/apiBase';
 
 export function AiNode({ data, id }: NodeProps & { data: AiNodeData }) {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,7 @@ export function AiNode({ data, id }: NodeProps & { data: AiNodeData }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/ai/execute', {
+      const res = await fetch(apiUrl('/api/ai/execute'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
