@@ -9,9 +9,10 @@
  *     VITE_API_BASE_URL at this Worker gives those builds a real API.
  *
  * CORS is open because the front end is served from a different origin than
- * this Worker in every deployment that needs it. Credentials still travel in
- * the request body exactly as they do to the Express server — this Worker adds
- * no new trust, and inherits that design's problems (see TODO.md).
+ * this Worker in every deployment that needs it, so access is gated on a
+ * shared secret instead — see denyUnlessAuthorized. Integration credentials
+ * still travel in the request body exactly as they do to the Express server;
+ * this Worker adds no new trust, and inherits that design's problems (TODO.md).
  */
 
 import { executeOperation } from '../src/server/executeCore';
@@ -32,9 +33,53 @@ interface SavedWorkflow {
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'content-type, authorization',
+  'Access-Control-Allow-Headers': 'content-type, authorization, x-bernie-key',
   'Access-Control-Max-Age': '86400',
 };
+
+/** Header carrying the shared secret. */
+const API_KEY_HEADER = 'x-bernie-key';
+
+/**
+ * Gate on a shared secret.
+ *
+ * Without one this Worker is an open proxy: `/api/integrations/execute` will
+ * fetch whatever the `http` integration or a `raw.request` operation names, on
+ * behalf of anyone who finds the URL. So it fails closed — an unset secret
+ * refuses the request rather than serving it openly, because the failure mode
+ * of the alternative is silent and expensive.
+ *
+ * This is a shared secret, not per-user auth: everyone using the app holds the
+ * same one. It stops the internet, not a colleague.
+ */
+function denyUnlessAuthorized(request: Request, env: Env): Response | null {
+  const expected = String(env.BERNIE_API_SECRET || '').trim();
+  if (!expected) {
+    return json(
+      {
+        error:
+          'This API has no BERNIE_API_SECRET configured, so it is refusing requests. ' +
+          'Set one with: wrangler secret put BERNIE_API_SECRET',
+      },
+      503
+    );
+  }
+
+  const supplied = String(request.headers.get(API_KEY_HEADER) || '').trim();
+  if (!supplied || !timingSafeEqual(supplied, expected)) {
+    return json({ error: 'Missing or incorrect API key.' }, 401);
+  }
+
+  return null;
+}
+
+/** Compares without leaking the answer through how long it took. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -238,9 +283,14 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
+    // Unauthenticated on purpose: a liveness check that reveals nothing, so a
+    // deployment can be verified without handing the key to whoever checks.
     if (path === '/api/health') {
       return json({ ok: true, service: 'bernie-api', at: new Date().toISOString() });
     }
+
+    const denied = denyUnlessAuthorized(request, env);
+    if (denied) return denied;
 
     if (path === '/api/workflows' || path.startsWith('/api/workflows/')) {
       const id = path === '/api/workflows' ? null : decodeURIComponent(path.slice('/api/workflows/'.length));

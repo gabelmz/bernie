@@ -16,6 +16,10 @@
  */
 
 const OVERRIDE_KEY = 'bernie-api-base';
+const API_KEY_STORAGE = 'bernie-api-key';
+
+/** Header the deployed Worker gates on. */
+export const API_KEY_HEADER = 'X-Bernie-Key';
 
 function stored(): string {
   try {
@@ -46,6 +50,36 @@ export function apiUrl(path: string): string {
   return base + (path.startsWith('/') ? path : '/' + path);
 }
 
+/**
+ * The shared secret for a deployed Worker. Same-origin Express needs none, so
+ * this is empty until the app is pointed at a Worker.
+ */
+export function apiKey(): string {
+  try {
+    return localStorage.getItem(API_KEY_STORAGE) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setApiKey(value: string): void {
+  try {
+    const trimmed = String(value || '').trim();
+    if (trimmed) localStorage.setItem(API_KEY_STORAGE, trimmed);
+    else localStorage.removeItem(API_KEY_STORAGE);
+  } catch {
+    // Nothing to do.
+  }
+}
+
+/** Headers every API call carries: JSON, plus the key when one is set. */
+export function apiHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
+  const key = apiKey();
+  if (key) headers[API_KEY_HEADER] = key;
+  return headers;
+}
+
 /** Points the app at a deployed API. Pass '' to go back to same-origin. */
 export function setApiBase(value: string): void {
   try {
@@ -62,6 +96,12 @@ export function setApiBase(value: string): void {
  * accepts POST. Saying so is more use than repeating the status code.
  */
 export function describeApiFailure(path: string, status: number): string {
+  if (status === 401) {
+    return `The API rejected the key for ${path}. Set the right one under Connections & APIs.`;
+  }
+  if (status === 503) {
+    return `The API at ${apiBase() || 'this origin'} has no shared secret configured, so it is refusing requests.`;
+  }
   if (status === 405 || status === 501) {
     const base = apiBase();
     return (

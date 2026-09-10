@@ -1,3 +1,4 @@
+import { ApiEndpointCard } from './ApiEndpointCard';
 import { GoogleAccountCard } from './GoogleAccountCard';
 import { IntegrationsManager } from './IntegrationsManager';
 
@@ -10,6 +11,8 @@ export function IntegrationsPage({ onClose }: IntegrationsPageProps) {
     <div className="flex flex-col h-full bg-card overflow-hidden">
       <div className="p-6 overflow-y-auto">
         <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest mb-4">Active Connections</h3>
+
+        <ApiEndpointCard />
 
         <GoogleAccountCard />
 

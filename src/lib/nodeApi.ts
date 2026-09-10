@@ -3,12 +3,12 @@
  * own error message so nodes can show something actionable instead of a bare
  * status code.
  */
-import { apiUrl, describeApiFailure } from './apiBase';
+import { apiHeaders, apiUrl, describeApiFailure } from './apiBase';
 
 export async function postJson<T = any>(path: string, body: any): Promise<T> {
   const response = await fetch(apiUrl(path), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders(),
     body: JSON.stringify(body ?? {}),
   });
 

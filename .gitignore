@@ -14,3 +14,4 @@ bun.lockb
 # Wrangler local state and generated types
 .wrangler/
 worker-configuration.d.ts
+.dev.vars

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import http from "http";
 import path from "path";
@@ -181,6 +182,12 @@ import { registerExecuteRoute } from "./src/server/executeRoute";
 registerProviderRoutes(app);
 registerExecuteRoute(app);
 
+// Same shape as the Worker's, so "is the API there?" is one question with one
+// answer wherever the page is served from.
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, service: "bernie-express", at: new Date().toISOString() });
+});
+
 /**
  * Saved workflows live in Cloudflare D1, which only the Worker can reach. In
  * development the Worker runs beside this server (`npm run worker:dev`), so
@@ -197,6 +204,9 @@ app.all(/^\/api\/workflows(?:\/.*)?$/, async (req, res) => {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
+        // The Worker gates on a shared secret even locally, so dev supplies it
+        // from the environment rather than making the browser hold it.
+        ...(process.env.BERNIE_API_SECRET ? { "X-Bernie-Key": process.env.BERNIE_API_SECRET } : {}),
         ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
       },
       body: req.method === "GET" || req.method === "HEAD" ? undefined : JSON.stringify(req.body ?? {}),

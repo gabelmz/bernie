@@ -7,7 +7,7 @@
  */
 
 import { Edge, Node } from '@xyflow/react';
-import { apiUrl, describeApiFailure } from './apiBase';
+import { apiHeaders, apiUrl, describeApiFailure } from './apiBase';
 import { getSession } from './auth';
 
 export interface WorkflowSummary {
@@ -51,7 +51,7 @@ export function serializeGraph(nodes: Node[], edges: Edge[]): { nodes: Node[]; e
 }
 
 function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers = apiHeaders();
   try {
     // The Supabase session token, whose `sub` is the user id the Worker scopes
     // rows by. Deliberately not getAccessToken(): that returns the *Google*
